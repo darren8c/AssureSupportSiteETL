@@ -2,10 +2,20 @@
 
 using SupportSiteETL;
 
-Console.WriteLine("Hello, World!");
+Console.WriteLine("Begin Program");
+
 QTAConnection q2aConnection = new QTAConnection();
-var q2aUsesrs = q2aConnection.GetUsers();
+var q2aUsers = q2aConnection.GetUsers();
+
+foreach(var qUser in q2aUsers) {
+    Console.WriteLine(qUser);
+}
 
 DiscourseConnection discourseConnection = new DiscourseConnection();
 var discourseUsers = discourseConnection.GetUsers();
-Console.WriteLine("Bye, World!");
+
+foreach(var dUser in discourseUsers) {
+    Console.WriteLine(dUser.Username); 
+}
+
+Console.WriteLine("End Program");

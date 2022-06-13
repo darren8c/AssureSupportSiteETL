@@ -31,7 +31,7 @@ namespace SupportSiteETL
 
                 //SQL Query to execute
                 //selecting only first 10 rows for demo
-                string sql = "select * from q2a.qa_users limit 0,10;";
+                string sql = "select * from qa_users limit 0,10;";
                 MySqlCommand cmd = new MySqlCommand(sql, conn);
                 MySqlDataReader rdr = cmd.ExecuteReader();
 
@@ -61,7 +61,7 @@ namespace SupportSiteETL
                 conn.Open();
 
                 //SQL Query to execute
-                string sql = "select * from q2a.qa_users";
+                string sql = "select * from qa_users";
                 MySqlCommand cmd = new MySqlCommand(sql, conn);
                 MySqlDataReader rdr = cmd.ExecuteReader();
                 
