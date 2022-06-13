@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 using Npgsql;
-using SupportSiteETL.Models;
+using SupportSiteETL.Models.DiscourseModels;
 
 namespace SupportSiteETL
 {

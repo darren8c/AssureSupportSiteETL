@@ -4,14 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SupportSiteETL.Models
+namespace SupportSiteETL.Models.DiscourseModels
 {
-    public class Q2AUser
+    public class DiscourseUser
     {
         #region Properties
-        public string? Id {get;set; }
+        public string? Id { get; set; }
 
         public string Username { get; set; }
+        
         #endregion
     }
 }
