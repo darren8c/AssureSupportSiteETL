@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Configuration;
 using Npgsql;
-using SupportSiteETL.Models.DiscourseModels;
 
 namespace SupportSiteETL
 {
@@ -14,39 +8,45 @@ namespace SupportSiteETL
         // Connection information for the discourse database. Sourced from `App.config`
         private string _connectionString;
 
+        // Constructor to set up connection string
         public DiscourseConnection()
         {
             _connectionString = ConfigurationManager.ConnectionStrings["discourse"].ConnectionString;
         }
 
-        public void TestConnection()
+        // Tests the connection to the database.
+        // Returns true if the query was successful, else false
+        public bool TestConnection()
         {
+            bool result = true;
             using NpgsqlConnection conn = new NpgsqlConnection(_connectionString);
             try
             {
                 Console.WriteLine("Connecting to PostgreSQL...");
                 conn.Open();
 
-                string sql = "select * from public.users;";
+                string sql = "select * from public.users limit 10;";
                 // Retrieve all rows
                 using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
                 using (NpgsqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
-                        Console.WriteLine(reader.GetInt32(0));
+                        Console.WriteLine(reader.GetValue(0).ToString() ?? "NULL");
                 }
             }
             catch (Exception err)
             {
+                result = false;
                 Console.WriteLine(err.ToString());
             }
 
             conn.Close();
+            return result;
         }
 
-        // Retrieves all users from the joined table of public.users and public.user_stats.
-        // Returns a list of users, where each user is a dictionary with keys being database field names.
-        public List<Dictionary<string, string>> GetUsers()
+        // Executes a query on the Discourse database, returning the result as a list of dictionaries.
+        // Each entry represents a single row in the query, with the keys being row/field names.
+        public List<Dictionary<string, string>> ExecuteQuery(string query)
         {
             List<Dictionary<string, string>> discourseUsers = new List<Dictionary<string, string>>();
 
@@ -55,12 +55,8 @@ namespace SupportSiteETL
             {
                 conn.Open();
 
-                //string sql = "select * from public.users order by id asc;";
-                //string sql = "select * from public.users join public.user_stats on public.users.id=public.user_stats.user_id limit 10;";
-                string sql = "select * from public.users join public.user_stats on public.users.id=public.user_stats.user_id;";
-
                 // Retrieve all rows
-                using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
                 using (NpgsqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())

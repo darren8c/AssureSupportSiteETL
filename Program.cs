@@ -53,11 +53,16 @@ Func<List<Dictionary<string, string>>, string> usersToCSV = users =>
 
 // Fetch all users from the Discourse database
 DiscourseConnection discourseConnection = new DiscourseConnection();
-var discourseUsers = discourseConnection.GetUsers();
+
+string getUsers = "select * from public.users order by id asc;";
+//string getUsersAndStats = "select * from public.users join public.user_stats on public.users.id=public.user_stats.user_id limit 10;";
+string getUsersAndStats = "select * from public.users join public.user_stats on public.users.id=public.user_stats.user_id order by id;";
+
+var discourseUsers = discourseConnection.ExecuteQuery(getUsersAndStats);
 Console.WriteLine("\nAll Discourse Users:");
 foreach (var user in discourseUsers)
 {
-    //Console.WriteLine(userToString(user) + "\n");
+    Console.WriteLine(userToString(user) + "\n");
     //Console.WriteLine(userToCSV(user) + "\n");
 }
 
