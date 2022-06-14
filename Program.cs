@@ -4,7 +4,7 @@ using SupportSiteETL;
 
 
 //testAnonNames();
-//testDatabaseConnections();
+testDatabaseConnections();
 
 void testTransfer()
 {
@@ -28,20 +28,21 @@ void testDatabaseConnections()
 {
     QTAConnection q2aConnection = new QTAConnection();
     var q2aUsers = q2aConnection.GetUsers();
-    
+
     DiscourseConnection discourseConnection = new DiscourseConnection();
     var discourseUsers = discourseConnection.GetUsers();
 
     Console.WriteLine("Databases Connected!");
-    
+
     Console.WriteLine("\nAll Q2A Users:");
-    foreach(var qUser in q2aUsers) {
-        Console.WriteLine("\t" + qUser.UserId + "\t" + qUser.Handle);
+    foreach (var qUser in q2aUsers)
+    {
+        Console.WriteLine("\t" + qUser["userid"] + "\t" + qUser["handle"]);
     }
 
     Console.WriteLine("\nAll Discourse Users:");
     foreach (var dUser in discourseUsers)
     {
-        Console.WriteLine("\t" + dUser.Id + "\t" + dUser.Username);
+        Console.WriteLine("\t" + dUser["id"] + "\t" + dUser["username"]);
     }
 }

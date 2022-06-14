@@ -146,16 +146,16 @@ namespace SupportSiteETL
             int lastId = -1;
             var q2aCurrUsers = q2aConnection.GetUsers();
             for (int i = 0; i < q2aCurrUsers.Count; i++)
-                if (q2aCurrUsers[i].UserId > lastId)
-                    lastId = q2aCurrUsers[i].UserId;
+                if (int.Parse(q2aCurrUsers[i]["user_id"]) > lastId)
+                    lastId = int.Parse(q2aCurrUsers[i]["user_id"]);
             //this will be the first id the new user receives (i.e. if the q2a site had 3 users, the first discourse user is not id 4)
             int currId = lastId + 1;
 
             //for each of the discourse users, fill in the needed data
             var discourseUsers = discourseConnection.GetUsers();
-            foreach(var dUser in discourseUsers)
+            foreach (var dUser in discourseUsers)
             {
-                gatherData(currId, int.Parse(dUser.Id));
+                gatherData(currId, int.Parse(dUser["id"]));
                 currId++;
             }
         }
@@ -163,7 +163,7 @@ namespace SupportSiteETL
         public void storeUserData() //save the loaded user data to Q2A
         {
             //make a write query for each user
-            foreach(var user in newUsers)
+            foreach (var user in newUsers)
             {
                 //queries for each of the q2a tables
             }
