@@ -1,69 +1,82 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
+﻿using System.Configuration;
 using Npgsql;
-using SupportSiteETL.Models.DiscourseModels;
 
 namespace SupportSiteETL
 {
     public class DiscourseConnection
     {
+        // Connection information for the discourse database. Sourced from `App.config`
         private string _connectionString;
 
+        // Constructor to set up connection string
         public DiscourseConnection()
         {
             _connectionString = ConfigurationManager.ConnectionStrings["discourse"].ConnectionString;
         }
 
-        public void TestConnection()
+        // Tests the connection to the database.
+        // Returns true if the query was successful, else false
+        public bool TestConnection()
         {
+            bool result = true;
             using NpgsqlConnection conn = new NpgsqlConnection(_connectionString);
             try
             {
                 Console.WriteLine("Connecting to PostgreSQL...");
                 conn.Open();
 
-                string sql = "select * from public.users;";
+                string sql = "select * from public.users limit 10;";
                 // Retrieve all rows
                 using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
                 using (NpgsqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
-                        Console.WriteLine(reader.GetInt32(0));
+                        Console.WriteLine(reader.GetValue(0).ToString() ?? "NULL");
                 }
             }
             catch (Exception err)
             {
+                result = false;
                 Console.WriteLine(err.ToString());
             }
 
             conn.Close();
+            return result;
         }
 
-        public List<DiscourseUser> GetUsers()
+        // Executes a query on the Discourse database, returning the result as a list of dictionaries.
+        // Each entry represents a single row in the query, with the keys being row/field names.
+        public List<Dictionary<string, string>> ExecuteQuery(string query)
         {
-            List<DiscourseUser> discourseUsers = new List<DiscourseUser>();
-        
+            List<Dictionary<string, string>> discourseUsers = new List<Dictionary<string, string>>();
+
             using NpgsqlConnection conn = new NpgsqlConnection(_connectionString);
             try
             {
                 conn.Open();
 
-                string sql = "select * from public.users;";
                 // Retrieve all rows
-                using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
                 using (NpgsqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        DiscourseUser discourseUser = new DiscourseUser();
-                        discourseUser.Id = reader.GetValue(reader.GetOrdinal("id")).ToString();
-                        discourseUser.Username = reader.GetString(reader.GetOrdinal("username"));
-                        discourseUsers.Add(discourseUser);
+                        // Create a new Dictionary to represent the user
+                        Dictionary<string, string> user = new Dictionary<string, string>();
+
+                        // Iterate over all fields in the row
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            // Get the field's name
+                            string fieldName = reader.GetName(i);
+                            // Fetch the value as a string, defaulting to "NULL" if the value doesn't exist
+                            string value = reader.GetValue(i).ToString() ?? "NULL";
+
+                            // Add the fieldname and value to the user/dictionary
+                            user.Add(fieldName, value);
+                        }
+
+                        discourseUsers.Add(user);
                     }
                 }
             }
@@ -71,8 +84,12 @@ namespace SupportSiteETL
             {
                 Console.WriteLine(err.ToString());
             }
+            finally
+            {
+                conn.Close();
+            }
 
-            conn.Close();
+
             return discourseUsers;
         }
     }

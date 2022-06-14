@@ -51,9 +51,9 @@ namespace SupportSiteETL
             conn.Close();
         }
 
-        public List<Q2AUser> GetUsers()
+        public List<Dictionary<string, string>> GetUsers()
         {
-            List<Q2AUser> q2AUsers = new List<Q2AUser>();
+            List<Dictionary<string, string>> q2AUsers = new List<Dictionary<string, string>>();
 
             MySqlConnection conn = new MySqlConnection(_connectionString);
             try
@@ -64,12 +64,12 @@ namespace SupportSiteETL
                 string sql = "select * from qa_users";
                 MySqlCommand cmd = new MySqlCommand(sql, conn);
                 MySqlDataReader rdr = cmd.ExecuteReader();
-                
+
                 //read the data
                 while (rdr.Read())
                 {
-                    Q2AUser qtaUser = ReadQ2AUser(rdr);
-                    
+                    Dictionary<string, string> qtaUser = ReadQ2AUser(rdr);
+
                     q2AUsers.Add(qtaUser);
                 }
 
@@ -85,68 +85,56 @@ namespace SupportSiteETL
         }
 
         // From the reader, build out a new Q2A user
-        public static Q2AUser ReadQ2AUser(MySqlDataReader rdr) {
-            Q2AUser qtaUser = new Q2AUser(
-                SafeGetInt(rdr, 0),
-                SafeGetDateTime(rdr, 1),
-                SafeGetVarBinary(rdr, 2), // This needs to be encoded
-                SafeGetString(rdr, 3),
-                SafeGetString(rdr, 4),
-                SafeGetInt(rdr, 5),
-                SafeGetInt(rdr, 6),
-                SafeGetInt(rdr, 7),
-                SafeGetString(rdr, 8),
-                SafeGetString(rdr, 9),
-                SafeGetString(rdr, 10),
-                SafeGetInt(rdr, 11),
-                SafeGetDateTime(rdr, 12),
-                SafeGetVarBinary(rdr, 13), // This also needs to be encoded
-                SafeGetDateTime(rdr, 14),
-                SafeGetVarBinary(rdr, 15), // As does this
-                SafeGetString(rdr, 16),
-                SafeGetString(rdr, 17),
-                SafeGetString(rdr, 18),
-                SafeGetInt(rdr, 19),
-                SafeGetInt(rdr, 20)
-            );
+        public static Dictionary<string, string> ReadQ2AUser(MySqlDataReader rdr)
+        {
+            // Create a new Dictionary to represent the user
+            Dictionary<string, string> user = new Dictionary<string, string>();
 
-            return qtaUser;
-        }
+            // Define all fields to fetch
+            string[] columnNames = {
+                "userid",
+                "created",
+                "createip",
+                "email",
+                "handle",
+                "avatarblobid",
+                "avatarwidth",
+                "avatarheight",
+                "passsalt",
+                "passcheck",
+                "passhash",
+                "level",
+                "loggedin",
+                "loginip",
+                "written",
+                "writeip",
+                "emailcode",
+                "sessioncode",
+                "sessionsource",
+                "flags",
+                "wallposts"
+            };
 
-        // Safely fetches the integer value a the column index,
-        // Returns `int.MaxValue` if the entry is null
-        public static int SafeGetInt(MySqlDataReader rdr, int colIndex) {
-            if (!rdr.IsDBNull(colIndex)) {
-                return rdr.GetInt32(colIndex);
+            // Add all the fields in key-value pairs
+            foreach (var fieldName in columnNames)
+            {
+                user.Add(fieldName, SafeGetData(rdr, fieldName));
             }
-            return int.MaxValue;
+
+            return user;
         }
 
-        // Safely fetches the string value a the column index,
+        // Safely fetches the data value at the column index as a string,
         // Returns `"NULL"` if the entry is null
-        public static string SafeGetString(MySqlDataReader rdr, int colIndex) {
-            if (!rdr.IsDBNull(colIndex) && !string.IsNullOrEmpty(rdr.GetString(colIndex))) {
-                return rdr.GetString(colIndex);
+        public static string SafeGetData(MySqlDataReader rdr, string colName)
+        {
+            int colIndex = rdr.GetOrdinal(colName);
+
+            if (!rdr.IsDBNull(colIndex))
+            {
+                return rdr.GetValue(colIndex).ToString() ?? "NULL";
             }
             return "NULL";
-        }
-
-        // Safely fetches the VarBinary value a the column index,
-        // Returns `"NULL"` if the entry is null
-        public static string SafeGetVarBinary(MySqlDataReader rdr, int colIndex) {
-            if (!rdr.IsDBNull(colIndex)) {
-                return rdr.GetString(colIndex);
-            }
-            return "NULL";
-        }
-
-        // Safely fetches the DateTime value a the column index,
-        // Returns `DateTime.MaxValue` if the entry is null
-        public static DateTime SafeGetDateTime(MySqlDataReader rdr, int colIndex) {
-            if (!rdr.IsDBNull(colIndex)) {
-                return rdr.GetDateTime(colIndex);
-            }
-            return DateTime.MaxValue;
         }
     }
 }
