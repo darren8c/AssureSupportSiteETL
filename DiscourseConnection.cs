@@ -11,6 +11,7 @@ namespace SupportSiteETL
 {
     public class DiscourseConnection
     {
+        // Connection information for the discourse database. Sourced from `App.config`
         private string _connectionString;
 
         public DiscourseConnection()
@@ -43,6 +44,8 @@ namespace SupportSiteETL
             conn.Close();
         }
 
+        // Retrieves all users from the joined table of public.users and public.user_stats.
+        // Returns a list of users, where each user is a dictionary with keys being database field names.
         public List<Dictionary<string, string>> GetUsers()
         {
             List<Dictionary<string, string>> discourseUsers = new List<Dictionary<string, string>>();
@@ -52,16 +55,32 @@ namespace SupportSiteETL
             {
                 conn.Open();
 
-                string sql = "select * from public.users;";
+                //string sql = "select * from public.users order by id asc;";
+                //string sql = "select * from public.users join public.user_stats on public.users.id=public.user_stats.user_id limit 10;";
+                string sql = "select * from public.users join public.user_stats on public.users.id=public.user_stats.user_id;";
+
                 // Retrieve all rows
                 using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
                 using (NpgsqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        Dictionary<string, string> discourseUser = ReadDiscourseUser(reader);
+                        // Create a new Dictionary to represent the user
+                        Dictionary<string, string> user = new Dictionary<string, string>();
 
-                        discourseUsers.Add(discourseUser);
+                        // Iterate over all fields in the row
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            // Get the field's name
+                            string fieldName = reader.GetName(i);
+                            // Fetch the value as a string, defaulting to "NULL" if the value doesn't exist
+                            string value = reader.GetValue(i).ToString() ?? "NULL";
+
+                            // Add the fieldname and value to the user/dictionary
+                            user.Add(fieldName, value);
+                        }
+
+                        discourseUsers.Add(user);
                     }
                 }
             }
@@ -69,79 +88,13 @@ namespace SupportSiteETL
             {
                 Console.WriteLine(err.ToString());
             }
+            finally
+            {
+                conn.Close();
+            }
 
-            conn.Close();
+
             return discourseUsers;
-        }
-
-        public static Dictionary<string, string> ReadDiscourseUser(NpgsqlDataReader reader)
-        {
-
-            // Create a new Dictionary to represent the user
-            Dictionary<string, string> user = new Dictionary<string, string>();
-
-            // Define all fields to fetch
-            string[] columnNames = {
-                "id",
-                "username",
-                "created_at",
-                "updated_at",
-                "name",
-                "seen_notification_id",
-                "last_posted_at",
-                "password_hash",
-                "salt",
-                "active",
-                "username_lower",
-                "last_seen_at",
-                "admin",
-                "last_emailed_at",
-                "trust_level",
-                "approved",
-                "approved_by_id",
-                "approved_at",
-                "previous_visit_at",
-                "suspended_at",
-                "suspended_till",
-                "date_of_birth",
-                "views",
-                "flag_level",
-                "ip_address",
-                "moderator",
-                "title",
-                "uploaded_avatar_id",
-                "locale",
-                "primary_group_id",
-                "registration_ip_address",
-                "staged",
-                "first_seen_at",
-                "silenced_till",
-                "group_locked_trust_level",
-                "manual_locked_trust_level",
-                "secure_identifier",
-                "flair_group_id"
-            };
-
-            // Add all the fields in key-value pairs
-            foreach (var fieldName in columnNames)
-            {
-                user.Add(fieldName, SafeGetData(reader, fieldName));
-            }
-
-            return user;
-        }
-
-        // Safely fetches the data value at the column index as a string,
-        // Returns `"NULL"` if the entry is null
-        public static string SafeGetData(NpgsqlDataReader rdr, string colName)
-        {
-            int colIndex = rdr.GetOrdinal(colName);
-
-            if (!rdr.IsDBNull(colIndex))
-            {
-                return rdr.GetValue(colIndex).ToString() ?? "NULL";
-            }
-            return "NULL";
         }
     }
 }
