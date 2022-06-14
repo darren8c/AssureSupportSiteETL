@@ -44,6 +44,11 @@ namespace SupportSiteETL
             return result;
         }
 
+        // Gets all users joined with their user stats
+        public List<Dictionary<string, string>> GetUsers() {
+            return ExecuteQuery("select * from public.users join public.user_stats on public.users.id=public.user_stats.user_id order by id;");
+        }
+
         // Executes a query on the Discourse database, returning the result as a list of dictionaries.
         // Each entry represents a single row in the query, with the keys being row/field names.
         public List<Dictionary<string, string>> ExecuteQuery(string query)
@@ -88,7 +93,6 @@ namespace SupportSiteETL
             {
                 conn.Close();
             }
-
 
             return discourseUsers;
         }
