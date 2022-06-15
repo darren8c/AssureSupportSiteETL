@@ -13,7 +13,7 @@ void testTransfer()
     ut.loadUserData();
     
     //Testing to see if user data looks right
-    /*
+    
     for(int i = 0; i < ut.newUsers.Count; i++)
     {
         var u = ut.newUsers[i];
@@ -27,7 +27,7 @@ void testTransfer()
 
         Console.WriteLine("");
     }
-    */
+    
 
     //ut.storeUserData();
 }

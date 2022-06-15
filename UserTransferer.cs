@@ -119,6 +119,8 @@ namespace SupportSiteETL
         private void populateLookupTable()
         {
             //fill in the lookup table from old discourse usernames to their new role name under Q2A
+            
+            
             var lines = File.ReadLines("roleMappings.txt");
             //file should be under AssureSupportSiteETL\bin\Debug\net6.0\roleMappings.txt'.'
 
@@ -190,7 +192,6 @@ namespace SupportSiteETL
                 {
                     using (MySqlCommand cmd = new MySqlCommand(sql4Users, conn))
                     {
-                        MySqlDataReader rdr = cmd.ExecuteReader();
                         cmd.Parameters.AddWithValue("@userid", user.userId);
                         cmd.Parameters.AddWithValue("@created", user.created_at);
                         cmd.Parameters.AddWithValue("@email", user.email);
@@ -198,22 +199,23 @@ namespace SupportSiteETL
                         cmd.Parameters.AddWithValue("@level", user.level);
                         cmd.Parameters.AddWithValue("@flags", user.flags);
                         cmd.Parameters.AddWithValue("@wallposts", user.wallposts);
+                        MySqlDataReader rdr = cmd.ExecuteReader();
                     }
                     using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn))
                     {
-                        MySqlDataReader rdr = cmd.ExecuteReader();
                         cmd.Parameters.AddWithValue("@about", user.about);
                         cmd.Parameters.AddWithValue("@location", user.location);
                         cmd.Parameters.AddWithValue("@name", user.name);
                         cmd.Parameters.AddWithValue("@website", user.website);
+                        MySqlDataReader rdr = cmd.ExecuteReader();
                     }
                     using (MySqlCommand cmd = new MySqlCommand(sql4Points, conn))
                     {
-                        MySqlDataReader rdr = cmd.ExecuteReader();
                         cmd.Parameters.AddWithValue("@qposts", user.qposts);
                         cmd.Parameters.AddWithValue("@qupvotes", user.qupvotes);
                         cmd.Parameters.AddWithValue("@qupvoteds", user.qupvoteds);
                         cmd.Parameters.AddWithValue("@upvoteds", user.upvoteds);
+                        MySqlDataReader rdr = cmd.ExecuteReader();
                     }
                 }
                 catch (Exception ex)
