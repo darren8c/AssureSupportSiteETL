@@ -45,8 +45,9 @@ namespace SupportSiteETL
         }
 
         // Gets all users joined with their user stats
-        public List<Dictionary<string, string>> GetUsers() {
-            return ExecuteQuery("select * from public.users join public.user_stats on public.users.id=public.user_stats.user_id order by id;");
+        public List<Dictionary<string, string>> GetUsers()
+        {
+            return ExecuteQuery("SELECT * FROM public.users JOIN public.user_stats ON public.users.id=public.user_stats.user_id ORDER BY id;");
         }
 
         // Executes a query on the Discourse database, returning the result as a list of dictionaries.
@@ -95,6 +96,36 @@ namespace SupportSiteETL
             }
 
             return discourseUsers;
+        }
+
+
+        // Executes an update, such as INSERT or DELETE, on the Discourse database.
+        // Returns the number of rows affected, if any, else -1.
+        public int ExecuteUpdate(string statement)
+        {
+            int rowsAffected = -1;
+
+            using NpgsqlConnection conn = new NpgsqlConnection(_connectionString);
+            try
+            {
+                conn.Open();
+
+                // Execute the command and retrieve the number of rows affected
+                using (NpgsqlCommand cmd = new NpgsqlCommand(statement, conn))
+                {
+                    rowsAffected = cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine(err.ToString());
+            }
+            finally
+            {
+                conn.Close();
+            }
+
+            return rowsAffected;
         }
     }
 }

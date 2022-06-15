@@ -194,7 +194,7 @@ namespace SupportSiteETL
             }
             catch (Exception ex)
             {
-                Console.Write(ex.Message);
+                Console.Write("Error setting global default value: " + ex.Message);
             }
 
             string sql4Users = "INSERT INTO qa_users (userid, created, loggedin, email, handle, level, flags, wallposts) VALUES (@userid, @created, @loggedin, @email, @handle, @level, @flags, @wallposts)";
@@ -266,7 +266,7 @@ namespace SupportSiteETL
                 }
                 catch (Exception ex)
                 {
-                    Console.Write(ex.Message);
+                    Console.Write("Error adding new user: " + ex.Message);
                 }
             }
             conn.Close();

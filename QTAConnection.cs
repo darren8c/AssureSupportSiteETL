@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Configuration;
 using MySql.Data.MySqlClient;
-using SupportSiteETL.Models.Q2AModels;
 
 namespace SupportSiteETL
 {
@@ -51,90 +45,155 @@ namespace SupportSiteETL
             conn.Close();
         }
 
+        /// <summary>
+        /// Gets all of the users from the Q2A database
+        /// </summary>
+        /// 
+        /// <returns>
+        /// A list of users, stored as dictionaries
+        /// </returns>
         public List<Dictionary<string, string>> GetUsers()
         {
-            List<Dictionary<string, string>> q2AUsers = new List<Dictionary<string, string>>();
+            return ExecuteQuery("SELECT * FROM qa_users ORDER BY userid;");
+        }
 
-            MySqlConnection conn = new MySqlConnection(_connectionString);
+
+        /// <summary>
+        /// Deletes all users in the Q2A database EXCEPT the Super Admin (first account created)
+        /// This removes the user's information from the following tables:
+        /// </summary>
+        /// 
+        /// <returns>
+        /// The number of users deleted
+        /// </returns>
+        public int DeleteUsers()
+        {
+            int rowsAffected = 0;
+            int tablesAffected = 0;
+
+            // We fetch [0] because there should only be one super-admin
+            var superAdmin = ExecuteQuery("SELECT userid FROM qa_users WHERE level = '120'")[0];
+            string superAdminId = superAdmin["userid"];
+
+            // All tables to delete the user from
+            string[] tablesToDeleteFrom = {
+                "qa_userevents",
+                "qa_userevents",
+                "qa_userfavorites",
+                // "qa_userfields", // This doesn't contain any user-specific information
+                "qa_userlevels",
+                "qa_userlimits",
+                "qa_userlogins",
+                "qa_usermetas",
+                "qa_usernotices",
+                "qa_userpoints",
+                "qa_userprofile",
+                "qa_users",
+                "qa_uservotes"
+            };
+
+            // Execute a delete statement for each table, keeping the super-admin
+            foreach(string table in tablesToDeleteFrom) {
+                string sql = string.Format("DELETE FROM {0} WHERE userid <> {1};", table, superAdminId);
+                int result = ExecuteUpdate(sql);
+                // If the table was modified, increase the number of tables affected
+                if (result > 0) {
+                    tablesAffected++;
+                    rowsAffected += result;
+                }
+            }
+
+            // Compute the number of users deleted
+            return tablesAffected > 0 ? rowsAffected / tablesAffected : 0;
+        }
+
+        /// <summary>
+        /// Executes a query on the Discourse database, returning the result as a list of dictionaries.
+        /// 
+        /// </summary>
+        /// <param name="query">The query to execute</param>
+        /// <returns>
+        /// List of dictionaries where each entry represents a single row in the query, with the keys being row/field names.
+        /// </returns>
+        public List<Dictionary<string, string>> ExecuteQuery(string query)
+        {
+            List<Dictionary<string, string>> users = new List<Dictionary<string, string>>();
+
+            using MySqlConnection conn = new MySqlConnection(_connectionString);
             try
             {
                 conn.Open();
 
-                //SQL Query to execute
-                string sql = "select * from qa_users";
-                MySqlCommand cmd = new MySqlCommand(sql, conn);
-                MySqlDataReader rdr = cmd.ExecuteReader();
-
-                //read the data
-                while (rdr.Read())
+                // Retrieve all rows
+                using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                using (MySqlDataReader reader = cmd.ExecuteReader())
                 {
-                    Dictionary<string, string> qtaUser = ReadQ2AUser(rdr);
+                    while (reader.Read())
+                    {
+                        // Create a new Dictionary to represent the user
+                        Dictionary<string, string> user = new Dictionary<string, string>();
 
-                    q2AUsers.Add(qtaUser);
+                        // Iterate over all fields in the row
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            // Get the field's name
+                            string fieldName = reader.GetName(i);
+                            // Fetch the value as a string, defaulting to "NULL" if the value doesn't exist
+                            string value = reader.GetValue(i).ToString() ?? "NULL";
+
+                            // Add the fieldname and value to the user/dictionary
+                            user.Add(fieldName, value);
+                        }
+
+                        users.Add(user);
+                    }
                 }
-
-                rdr.Close();
             }
             catch (Exception err)
             {
                 Console.WriteLine(err.ToString());
             }
-
-            conn.Close();
-            return q2AUsers;
-        }
-
-        // From the reader, build out a new Q2A user
-        public static Dictionary<string, string> ReadQ2AUser(MySqlDataReader rdr)
-        {
-            // Create a new Dictionary to represent the user
-            Dictionary<string, string> user = new Dictionary<string, string>();
-
-            // Define all fields to fetch
-            string[] columnNames = {
-                "userid",
-                "created",
-                "createip",
-                "email",
-                "handle",
-                "avatarblobid",
-                "avatarwidth",
-                "avatarheight",
-                "passsalt",
-                "passcheck",
-                "passhash",
-                "level",
-                "loggedin",
-                "loginip",
-                "written",
-                "writeip",
-                "emailcode",
-                "sessioncode",
-                "sessionsource",
-                "flags",
-                "wallposts"
-            };
-
-            // Add all the fields in key-value pairs
-            foreach (var fieldName in columnNames)
+            finally
             {
-                user.Add(fieldName, SafeGetData(rdr, fieldName));
+                conn.Close();
             }
 
-            return user;
+            return users;
         }
 
-        // Safely fetches the data value at the column index as a string,
-        // Returns `"NULL"` if the entry is null
-        public static string SafeGetData(MySqlDataReader rdr, string colName)
-        {
-            int colIndex = rdr.GetOrdinal(colName);
 
-            if (!rdr.IsDBNull(colIndex))
+        /// <summary>
+        /// Executes an update, such as INSERT or DELETE, on the Discourse database.
+        /// </summary>
+        /// <param name="statement">The statement to execute</param>
+        /// <returns>
+        /// The number of rows affected, if any, else -1.
+        /// </returns>
+        public int ExecuteUpdate(string statement)
+        {
+            int rowsAffected = -1;
+
+            using MySqlConnection conn = new MySqlConnection(_connectionString);
+            try
             {
-                return rdr.GetValue(colIndex).ToString() ?? "NULL";
+                conn.Open();
+
+                // Execute the command and retrieve the number of rows affected
+                using (MySqlCommand cmd = new MySqlCommand(statement, conn))
+                {
+                    rowsAffected = cmd.ExecuteNonQuery();
+                }
             }
-            return "NULL";
+            catch (Exception err)
+            {
+                Console.WriteLine(err.ToString());
+            }
+            finally
+            {
+                conn.Close();
+            }
+
+            return rowsAffected;
         }
     }
 }
