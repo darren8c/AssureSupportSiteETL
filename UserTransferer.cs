@@ -31,6 +31,7 @@ namespace SupportSiteETL
 
         //for qa_userpoints
         //points will be calculated from q2a by the admin
+        public int points;
         public int qposts = 0; //number of question posts made
         public int qupvotes = 0; //number of upvotes on questions
         public int qvoteds = 0; //number of question upvotes received
@@ -75,6 +76,7 @@ namespace SupportSiteETL
             qupvotes = 0; //number of upvotes on questions
             qvoteds = 0; //number of question upvotes received
             upvoteds = 0; //number of total upvotes received
+            points = 0;
 
             //these are other fields for qa_userpoints but are just going to zeros
             aposts = 0;
@@ -179,7 +181,7 @@ namespace SupportSiteETL
         {
             string _connectionString = ConfigurationManager.ConnectionStrings["q2a"].ConnectionString;
             MySqlConnection conn = new MySqlConnection(_connectionString);
-            Console.WriteLine("Connecting to MySQL...");
+            Console.WriteLine("Transfering users...");
             conn.Open();
 
             string sqlMode = "SET GLOBAl sql_mode=''"; //makes default value null to avoid errors, when fields are left unspecified
@@ -200,7 +202,7 @@ namespace SupportSiteETL
             //the profile writing is actually 4 inserts
             string sql4Profiles = "Insert INTO qa_userprofile (userid, title, content) VALUES (@userid, @title, @content)";
             
-            string sql4Points = "Insert INTO qa_userpoints (userid, qposts, qupvotes, qvoteds, upvoteds) VALUES (@userid, @qposts, @qupvotes, @qvoteds, @upvoteds)";
+            string sql4Points = "Insert INTO qa_userpoints (userid, points, qposts, qupvotes, qvoteds, upvoteds) VALUES (@userid, @points, @qposts, @qupvotes, @qvoteds, @upvoteds)";
             //make a write query for each user
             foreach (var user in newUsers)
             {
@@ -227,6 +229,7 @@ namespace SupportSiteETL
                         cmd.Parameters.AddWithValue("@qupvotes", user.qupvotes);
                         cmd.Parameters.AddWithValue("@qvoteds", user.qvoteds);
                         cmd.Parameters.AddWithValue("@upvoteds", user.upvoteds);
+                        cmd.Parameters.AddWithValue("@points", user.points);
                         cmd.ExecuteNonQuery();
                     }
 
@@ -299,7 +302,14 @@ namespace SupportSiteETL
             newUser.qupvotes = int.Parse(dUser["likes_given"]); //number of upvotes on questions
             newUser.qvoteds = int.Parse(dUser["likes_received"]); //number of question upvotes received
             newUser.upvoteds = newUser.qvoteds; //number of total upvotes received
+
+
+            //basic formula to calculate points
+            int basePoints = 100;
+            int mult = 10; //multiply value for all other point sums
+            newUser.points = 100 + mult*(2*newUser.qposts + newUser.qupvotes + newUser.qvoteds);
             //there are other fields here that correspond to points but they are already zeros
+            
 
             return newUser;
         }

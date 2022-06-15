@@ -4,8 +4,8 @@ using SupportSiteETL;
 
 
 //testAnonNames();
-testDatabaseConnections();
-//testTransfer();
+//testDatabaseConnections();
+testTransfer();
 
 void testTransfer()
 {
