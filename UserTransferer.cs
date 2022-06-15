@@ -94,8 +94,7 @@ namespace SupportSiteETL
     public class UserTransferer
     {
         public List<Q2AUserData> newUsers;
-        private Dictionary<string, string> discourseLookupTable;
-        private Dictionary<string, int> roleLevelMap;
+        public Dictionary<int, string> discourseLookupTable;
 
         private QTAConnection q2aConnection;
         private DiscourseConnection discourseConnection;
@@ -108,10 +107,8 @@ namespace SupportSiteETL
             nameGen = new AnonNameGen(); //generates the usernames, e.g. anon127443
 
             //contains all the info for what level 4 users on discourse and what new role they have on Q2A
-            discourseLookupTable = new Dictionary<string, string>();
+            discourseLookupTable = new Dictionary<int,string>();
             populateLookupTable();
-
-            roleLevelMap = new Dictionary<string, int>(); //contains mapping from role to level number, i.e. admin = 100
 
             q2aConnection = new QTAConnection();
             discourseConnection = new DiscourseConnection();
@@ -122,6 +119,22 @@ namespace SupportSiteETL
         private void populateLookupTable()
         {
             //fill in the lookup table from old discourse usernames to their new role name under Q2A
+            var lines = File.ReadLines("roleMappings.txt");
+            //file should be under AssureSupportSiteETL\bin\Debug\net6.0\roleMappings.txt'.'
+
+            foreach (string line in lines)
+            {
+                string[] data = line.Split(',');
+                if(data.Length != 2) //there should always be 2 fields (discourse_user_id, newRole)
+                {
+                    Console.WriteLine("Error, roleMappings.txt is not in the correct format!");
+                    return;
+                }
+                int id = int.Parse(data[0]);
+                string newRole = data[1];
+
+                discourseLookupTable.Add(id, newRole);
+            }    
         }
 
         private int getRoleMap(string role)
@@ -146,8 +159,8 @@ namespace SupportSiteETL
             int lastId = -1;
             var q2aCurrUsers = q2aConnection.GetUsers();
             for (int i = 0; i < q2aCurrUsers.Count; i++)
-                if (int.Parse(q2aCurrUsers[i]["user_id"]) > lastId)
-                    lastId = int.Parse(q2aCurrUsers[i]["user_id"]);
+                if (int.Parse(q2aCurrUsers[i]["userid"]) > lastId)
+                    lastId = int.Parse(q2aCurrUsers[i]["userid"]);
             //this will be the first id the new user receives (i.e. if the q2a site had 3 users, the first discourse user is not id 4)
             int currId = lastId + 1;
 
@@ -155,7 +168,7 @@ namespace SupportSiteETL
             var discourseUsers = discourseConnection.GetUsers();
             foreach (var dUser in discourseUsers)
             {
-                gatherData(currId, int.Parse(dUser["id"]));
+                gatherData(currId, dUser);
                 currId++;
             }
         }
@@ -170,17 +183,20 @@ namespace SupportSiteETL
         }
 
         //fill in the needed data from the databases for this user
-        private Q2AUserData gatherData(int userId, int dUserId)
+        private Q2AUserData gatherData(int userId, Dictionary<string, string> dUser)
         {
             Q2AUserData newUser = new Q2AUserData();
 
-            newUser.userId = userId;
+            int dUserId = int.Parse(dUser["id"]);
+            newUser.userId = userId + dUserId;
             newUser.handle = nameGen.getNewUser().name;
 
             newUser.created_at = DateTime.Now; //time doesn't matter just use now
             newUser.email = userId + "@example.com"; //just a default email
 
-            newUser.level = getUserLevel(dUserId);
+            newUser.level = 0; //default user
+            if(discourseLookupTable.ContainsKey(dUserId)) //check for a mapping
+                newUser.level = getRoleMap(discourseLookupTable[dUserId]); //oldId -> newRole -> roleLevel#
 
             newUser.flags = 0;
             newUser.wallposts = 0;
@@ -190,22 +206,14 @@ namespace SupportSiteETL
             newUser.name = "";
             newUser.website = "";
 
-            newUser.qposts = 0; //number of question posts made
-            newUser.qupvotes = 0; //number of upvotes on questions
-            newUser.qupvoteds = 0; //number of question upvotes received
-            newUser.upvoteds = 0; //number of total upvotes received
+            //these analogs aren't perfect matches but they are likely close enough
+            newUser.qposts = int.Parse(dUser["post_count"]); //number of question posts made
+            newUser.qupvotes = int.Parse(dUser["likes_given"]); //number of upvotes on questions
+            newUser.qupvoteds = int.Parse(dUser["likes_received"]); //number of question upvotes received
+            newUser.upvoteds = newUser.qupvoteds; //number of total upvotes received
             //there are other fields here that correspond to points but they are already zeros
 
             return newUser;
-        }
-
-        private int getUserLevel(int dUserId)
-        {
-            int newLevel = 0;
-
-            //if the user isn't in the mapping it is just a user
-
-            return newLevel;
         }
     }
 }

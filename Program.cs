@@ -4,12 +4,12 @@ using SupportSiteETL;
 
 
 //testAnonNames();
-testDatabaseConnections();
+//testDatabaseConnections();
+testTransfer();
 
 void testTransfer()
 {
     UserTransferer ut = new UserTransferer();
-
     ut.loadUserData();
 }
 
