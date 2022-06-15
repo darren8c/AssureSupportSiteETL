@@ -168,7 +168,7 @@ namespace SupportSiteETL
             var discourseUsers = discourseConnection.GetUsers();
             foreach (var dUser in discourseUsers)
             {
-                gatherData(currId, dUser);
+                newUsers.Add(gatherData(currId, dUser));
                 currId++;
             }
         }
@@ -230,11 +230,11 @@ namespace SupportSiteETL
             Q2AUserData newUser = new Q2AUserData();
 
             int dUserId = int.Parse(dUser["id"]);
-            newUser.userId = userId + dUserId;
+            newUser.userId = userId;
             newUser.handle = nameGen.getNewUser().name;
 
             newUser.created_at = DateTime.Now; //time doesn't matter just use now
-            newUser.email = userId + "@example.com"; //just a default email
+            newUser.email = newUser.handle + "@example.com"; //just a default email
 
             newUser.level = 0; //default user
             if(discourseLookupTable.ContainsKey(dUserId)) //check for a mapping
