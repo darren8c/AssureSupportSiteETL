@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using SupportSiteETL.Models.DiscourseModels;
 using SupportSiteETL.Models.Q2AModels;
+using MySql.Data.MySqlClient;
+using System.Configuration;
 
 namespace SupportSiteETL
 {
@@ -115,8 +117,6 @@ namespace SupportSiteETL
 
             q2aConnection = new QTAConnection();
             discourseConnection = new DiscourseConnection();
-
-            q2aConnection.GetUsers();
         }
 
         private void populateLookupTable()
@@ -162,11 +162,53 @@ namespace SupportSiteETL
 
         public void storeUserData() //save the loaded user data to Q2A
         {
+            string _connectionString = ConfigurationManager.ConnectionStrings["q2a"].ConnectionString;
+            MySqlConnection conn = new MySqlConnection(_connectionString);
+            Console.WriteLine("Connecting to MySQL...");
+            conn.Open();
+            string sql4Users = "INSERT INTO qa_users (userid, created, email, handle, level, flags, wallposts) VALUES (@userid, @created, @email, @handle, @level, @flags, @wallposts)";
+            string sql4Profiles = "Insert INTO qa_userprofile (about, location, name, website) VALUES (@about, @location, @name, @website)";
+            string sql4Points = "Insert INTO qa_userpoints (qposts, qupvotes, qupvoteds, upvoteds) VALUES (@qposts, @qupvotes, @qupvoteds, @upvoteds)";
             //make a write query for each user
             foreach (var user in newUsers)
             {
                 //queries for each of the q2a tables
+                try
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(sql4Users, conn))
+                    {
+                        MySqlDataReader rdr = cmd.ExecuteReader();
+                        cmd.Parameters.AddWithValue("@userid", user.userId);
+                        cmd.Parameters.AddWithValue("@created", user.created_at);
+                        cmd.Parameters.AddWithValue("@email", user.email);
+                        cmd.Parameters.AddWithValue("@handle", user.handle);
+                        cmd.Parameters.AddWithValue("@level", user.level);
+                        cmd.Parameters.AddWithValue("@flags", user.flags);
+                        cmd.Parameters.AddWithValue("@wallposts", user.wallposts);
+                    }
+                    using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn))
+                    {
+                        MySqlDataReader rdr = cmd.ExecuteReader();
+                        cmd.Parameters.AddWithValue("@about", user.about);
+                        cmd.Parameters.AddWithValue("@location", user.location);
+                        cmd.Parameters.AddWithValue("@name", user.name);
+                        cmd.Parameters.AddWithValue("@website", user.website);
+                    }
+                    using (MySqlCommand cmd = new MySqlCommand(sql4Points, conn))
+                    {
+                        MySqlDataReader rdr = cmd.ExecuteReader();
+                        cmd.Parameters.AddWithValue("@qposts", user.qposts);
+                        cmd.Parameters.AddWithValue("@qupvotes", user.qupvotes);
+                        cmd.Parameters.AddWithValue("@qupvoteds", user.qupvoteds);
+                        cmd.Parameters.AddWithValue("@upvoteds", user.upvoteds);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.Write(ex.Message);
+                }
             }
+            conn.Close();
         }
 
         //fill in the needed data from the databases for this user
