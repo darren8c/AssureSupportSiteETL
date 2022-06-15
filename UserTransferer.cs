@@ -16,6 +16,7 @@ namespace SupportSiteETL
         public int userId = -1;
         public string handle = "";
         public DateTime created_at;
+        public DateTime loggedin;
         public string email = "";
         public int level = 0;
         public int flags = 0;
@@ -55,6 +56,7 @@ namespace SupportSiteETL
             userId = -1;
             handle = "";
             DateTime created_at = new DateTime();
+            DateTime loggedin = new DateTime();
             email = "";
             level = 0;
             flags = 0;
@@ -193,7 +195,7 @@ namespace SupportSiteETL
                 Console.Write(ex.Message);
             }
 
-            string sql4Users = "INSERT INTO qa_users (userid, created, email, handle, level, flags, wallposts) VALUES (@userid, @created, @email, @handle, @level, @flags, @wallposts)";
+            string sql4Users = "INSERT INTO qa_users (userid, created, loggedin, email, handle, level, flags, wallposts) VALUES (@userid, @created, @loggedin, @email, @handle, @level, @flags, @wallposts)";
 
             //the profile writing is actually 4 inserts
             string sql4Profiles = "Insert INTO qa_userprofile (userid, title, content) VALUES (@userid, @title, @content)";
@@ -209,6 +211,7 @@ namespace SupportSiteETL
                     {
                         cmd.Parameters.AddWithValue("@userid", user.userId);
                         cmd.Parameters.AddWithValue("@created", user.created_at);
+                        cmd.Parameters.AddWithValue("@loggedin", user.loggedin);
                         cmd.Parameters.AddWithValue("@email", user.email);
                         cmd.Parameters.AddWithValue("@handle", user.handle);
                         cmd.Parameters.AddWithValue("@level", user.level);
@@ -276,6 +279,7 @@ namespace SupportSiteETL
             newUser.handle = nameGen.getNewUser().name;
 
             newUser.created_at = DateTime.Now; //time doesn't matter just use now
+            newUser.loggedin = DateTime.Now;
             newUser.email = newUser.handle + "@example.com"; //just a default email
 
             newUser.level = 0; //default user
