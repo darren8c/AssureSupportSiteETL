@@ -4,8 +4,8 @@ using SupportSiteETL;
 
 
 //testAnonNames();
-//testDatabaseConnections();
-testTransfer();
+testDatabaseConnections();
+//testTransfer();
 
 void testTransfer()
 {
@@ -13,7 +13,7 @@ void testTransfer()
     ut.loadUserData();
     
     //Testing to see if user data looks right
-    
+    /*
     for(int i = 0; i < ut.newUsers.Count; i++)
     {
         var u = ut.newUsers[i];
@@ -27,9 +27,9 @@ void testTransfer()
 
         Console.WriteLine("");
     }
-    
+    */
 
-    //ut.storeUserData();
+    ut.storeUserData();
 }
 
 void testAnonNames()

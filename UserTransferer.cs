@@ -15,7 +15,7 @@ namespace SupportSiteETL
         //for qa_users
         public int userId = -1;
         public string handle = "";
-        public DateTime created_at = new DateTime();
+        public DateTime created_at;
         public string email = "";
         public int level = 0;
         public int flags = 0;
@@ -32,7 +32,7 @@ namespace SupportSiteETL
         //points will be calculated from q2a by the admin
         public int qposts = 0; //number of question posts made
         public int qupvotes = 0; //number of upvotes on questions
-        public int qupvoteds = 0; //number of question upvotes received
+        public int qvoteds = 0; //number of question upvotes received
         public int upvoteds = 0; //number of total upvotes received
 
         //other zero fields for qa_userpoints
@@ -44,7 +44,6 @@ namespace SupportSiteETL
         public int adownvotes;
         public int cupvotes;
         public int cdownvotes;
-        public int qvoteds;
         public int avoteds;
         public int cvoteds;
         public int downvoteds;
@@ -55,7 +54,7 @@ namespace SupportSiteETL
             //for qa_users
             userId = -1;
             handle = "";
-            created_at = new DateTime();
+            DateTime created_at = new DateTime();
             email = "";
             level = 0;
             flags = 0;
@@ -72,7 +71,7 @@ namespace SupportSiteETL
             //points will be calculated from q2a by the admin
             qposts = 0; //number of question posts made
             qupvotes = 0; //number of upvotes on questions
-            qupvoteds = 0; //number of question upvotes received
+            qvoteds = 0; //number of question upvotes received
             upvoteds = 0; //number of total upvotes received
 
             //these are other fields for qa_userpoints but are just going to zeros
@@ -85,7 +84,6 @@ namespace SupportSiteETL
             adownvotes = 0;
             cupvotes = 0;
             cdownvotes = 0;
-            qvoteds = 0;
             avoteds = 0;
             cvoteds = 0;
             downvoteds = 0;
@@ -181,16 +179,33 @@ namespace SupportSiteETL
             MySqlConnection conn = new MySqlConnection(_connectionString);
             Console.WriteLine("Connecting to MySQL...");
             conn.Open();
+
+            string sqlMode = "SET GLOBAl sql_mode=''"; //makes default value null to avoid errors, when fields are left unspecified
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand(sqlMode, conn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Write(ex.Message);
+            }
+
             string sql4Users = "INSERT INTO qa_users (userid, created, email, handle, level, flags, wallposts) VALUES (@userid, @created, @email, @handle, @level, @flags, @wallposts)";
-            string sql4Profiles = "Insert INTO qa_userprofile (about, location, name, website) VALUES (@about, @location, @name, @website)";
-            string sql4Points = "Insert INTO qa_userpoints (qposts, qupvotes, qupvoteds, upvoteds) VALUES (@qposts, @qupvotes, @qupvoteds, @upvoteds)";
+
+            //the profile writing is actually 4 inserts
+            string sql4Profiles = "Insert INTO qa_userprofile (userid, title, content) VALUES (@userid, @title, @content)";
+            
+            string sql4Points = "Insert INTO qa_userpoints (userid, qposts, qupvotes, qvoteds, upvoteds) VALUES (@userid, @qposts, @qupvotes, @qvoteds, @upvoteds)";
             //make a write query for each user
             foreach (var user in newUsers)
             {
                 //queries for each of the q2a tables
                 try
                 {
-                    using (MySqlCommand cmd = new MySqlCommand(sql4Users, conn))
+                    using (MySqlCommand cmd = new MySqlCommand(sql4Users, conn)) //to qa_users
                     {
                         cmd.Parameters.AddWithValue("@userid", user.userId);
                         cmd.Parameters.AddWithValue("@created", user.created_at);
@@ -199,23 +214,48 @@ namespace SupportSiteETL
                         cmd.Parameters.AddWithValue("@level", user.level);
                         cmd.Parameters.AddWithValue("@flags", user.flags);
                         cmd.Parameters.AddWithValue("@wallposts", user.wallposts);
-                        MySqlDataReader rdr = cmd.ExecuteReader();
+                        cmd.ExecuteNonQuery();
                     }
-                    using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn))
+
+                    using (MySqlCommand cmd = new MySqlCommand(sql4Points, conn)) //to qa_points
                     {
-                        cmd.Parameters.AddWithValue("@about", user.about);
-                        cmd.Parameters.AddWithValue("@location", user.location);
-                        cmd.Parameters.AddWithValue("@name", user.name);
-                        cmd.Parameters.AddWithValue("@website", user.website);
-                        MySqlDataReader rdr = cmd.ExecuteReader();
-                    }
-                    using (MySqlCommand cmd = new MySqlCommand(sql4Points, conn))
-                    {
+                        cmd.Parameters.AddWithValue("@userid", user.userId);
                         cmd.Parameters.AddWithValue("@qposts", user.qposts);
                         cmd.Parameters.AddWithValue("@qupvotes", user.qupvotes);
-                        cmd.Parameters.AddWithValue("@qupvoteds", user.qupvoteds);
+                        cmd.Parameters.AddWithValue("@qvoteds", user.qvoteds);
                         cmd.Parameters.AddWithValue("@upvoteds", user.upvoteds);
-                        MySqlDataReader rdr = cmd.ExecuteReader();
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    //each of the profile writes
+                    using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn)) //about
+                    {
+                        cmd.Parameters.AddWithValue("@userid", user.userId);
+                        cmd.Parameters.AddWithValue("@title", "about");
+                        cmd.Parameters.AddWithValue("@content", user.about);
+                        cmd.ExecuteNonQuery();
+                    }
+                    
+                    using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn)) //location
+                    {
+                        cmd.Parameters.AddWithValue("@userid", user.userId);
+                        cmd.Parameters.AddWithValue("@title", "location");
+                        cmd.Parameters.AddWithValue("@content", user.location);
+                        cmd.ExecuteNonQuery();
+                    }
+                    using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn)) //name
+                    {
+                        cmd.Parameters.AddWithValue("@userid", user.userId);
+                        cmd.Parameters.AddWithValue("@title", "name");
+                        cmd.Parameters.AddWithValue("@content", user.name);
+                        cmd.ExecuteNonQuery();
+                    }
+                    using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn)) //website
+                    {
+                        cmd.Parameters.AddWithValue("@userid", user.userId);
+                        cmd.Parameters.AddWithValue("@title", "website");
+                        cmd.Parameters.AddWithValue("@content", user.website);
+                        cmd.ExecuteNonQuery();
                     }
                 }
                 catch (Exception ex)
@@ -253,8 +293,8 @@ namespace SupportSiteETL
             //these analogs aren't perfect matches but they are likely close enough
             newUser.qposts = int.Parse(dUser["post_count"]); //number of question posts made
             newUser.qupvotes = int.Parse(dUser["likes_given"]); //number of upvotes on questions
-            newUser.qupvoteds = int.Parse(dUser["likes_received"]); //number of question upvotes received
-            newUser.upvoteds = newUser.qupvoteds; //number of total upvotes received
+            newUser.qvoteds = int.Parse(dUser["likes_received"]); //number of question upvotes received
+            newUser.upvoteds = newUser.qvoteds; //number of total upvotes received
             //there are other fields here that correspond to points but they are already zeros
 
             return newUser;
