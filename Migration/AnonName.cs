@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SupportSiteETL
+namespace SupportSiteETL.Migration
 {
     public struct AnonName
     {
@@ -33,7 +33,7 @@ namespace SupportSiteETL
                 return newUser;
 
             bool valid = false;
-            while(!valid)
+            while (!valid)
             {
                 //generate a random name like anon274375
                 newUser.name = "anon";
@@ -42,9 +42,9 @@ namespace SupportSiteETL
 
                 //check to make sure this name doesn't exist
                 valid = true;
-                foreach(AnonName user in users)
+                foreach (AnonName user in users)
                 {
-                    if(user.name == newUser.name)
+                    if (user.name == newUser.name)
                     {
                         valid = false;
                         break; //match, not a valid name, redo process

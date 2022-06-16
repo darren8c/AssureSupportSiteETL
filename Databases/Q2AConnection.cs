@@ -1,13 +1,13 @@
 ﻿using System.Configuration;
 using MySql.Data.MySqlClient;
 
-namespace SupportSiteETL
+namespace SupportSiteETL.Databases
 {
-    public class QTAConnection
+    public class Q2AConnection
     {
         private string _connectionString;
 
-        public QTAConnection()
+        public Q2AConnection()
         {
             _connectionString = ConfigurationManager.ConnectionStrings["q2a"].ConnectionString;
         }
@@ -92,7 +92,8 @@ namespace SupportSiteETL
             };
 
             // Execute a delete statement for each table, keeping the super-admin
-            foreach(string table in tablesToDeleteFrom) {
+            foreach (string table in tablesToDeleteFrom)
+            {
                 string sql = string.Format("DELETE FROM {0} WHERE userid <> {1};", table, superAdminId);
                 result = ExecuteUpdate(sql);
                 rowsAffected += result;
@@ -105,11 +106,14 @@ namespace SupportSiteETL
             result = ExecuteUpdate(sharedevents);
             Console.WriteLine(string.Format("Deleted {0} rows from qa_sharedevents", result));
 
+            UpdateUserCount(); //update settings table with correct user count
+
             // Compute the number of users deleted
             return rowsAffected;
         }
 
-        public int DeletePosts() {
+        public int DeletePosts()
+        {
             int rowsAffected = 0;
 
             string sql = "DELETE FROM qa_posts";
@@ -205,6 +209,44 @@ namespace SupportSiteETL
             }
 
             return rowsAffected;
+        }
+
+
+        //updates the cache_userpointscount stat which tracks the number of users on the site
+        public void UpdateUserCount()
+        {
+            //update the user count field in the options table
+            MySqlConnection conn = retrieveConnection();
+
+            int totalUsers = 1; //a query will determine the count
+
+            string findUserCountCommand = "SELECT COUNT(*) FROM qa_users";
+            string userCountUpdateCommand = "UPDATE qa_options SET content = @content WHERE title='cache_userpointscount'";
+            conn.Open();
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand(findUserCountCommand, conn)) //count number of users
+                {
+                    totalUsers = (int)(Int64)cmd.ExecuteScalar(); //executes query and returns entry in first row and column
+                }
+                using (MySqlCommand cmd = new MySqlCommand(userCountUpdateCommand, conn)) //to qa_users
+                {
+                    cmd.Parameters.AddWithValue("@content", totalUsers);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error adding user count data: " + ex.Message);
+            }
+            conn.Close();
+        }
+
+
+        public MySqlConnection retrieveConnection()
+        {
+            string connStr = _connectionString;
+            return new MySqlConnection(connStr);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using SupportSiteETL;
+using SupportSiteETL.Databases;
+using SupportSiteETL.Migration;
 
 
 //testAnonNames();
@@ -18,6 +19,7 @@ void testTransfer()
     ut.loadUserData();
 
     //Testing to see if user data looks right
+
     /*
     for(int i = 0; i < ut.newUsers.Count; i++)
     {
@@ -50,7 +52,7 @@ void testAnonNames()
 
 void testDatabaseConnections()
 {
-    QTAConnection q2aConnection = new QTAConnection();
+    Q2AConnection q2aConnection = new Q2AConnection();
     var q2aUsers = q2aConnection.GetUsers();
 
     DiscourseConnection discourseConnection = new DiscourseConnection();
@@ -112,7 +114,7 @@ void testQ2AUserFetch()
         return str.TrimEnd();
     };
 
-    QTAConnection q2aConnection = new QTAConnection();
+    Q2AConnection q2aConnection = new Q2AConnection();
     var q2aUsers = q2aConnection.GetUsers();
 
     Console.WriteLine("\nAll Q2A Users:");
@@ -124,7 +126,7 @@ void testQ2AUserFetch()
 
 void testQ2ADeleteUsers()
 {
-    QTAConnection q2aConnection = new QTAConnection();
+    Q2AConnection q2aConnection = new Q2AConnection();
     var beforeDelete = q2aConnection.GetUsers();
     int result = q2aConnection.DeleteUsers();
     var afterDelete = q2aConnection.GetUsers();

@@ -1,7 +1,7 @@
 ﻿using System.Configuration;
 using Npgsql;
 
-namespace SupportSiteETL
+namespace SupportSiteETL.Databases
 {
     public class DiscourseConnection
     {
