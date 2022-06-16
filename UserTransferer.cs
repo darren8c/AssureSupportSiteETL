@@ -177,34 +177,18 @@ namespace SupportSiteETL
             }
         }
 
-        public void storeUserData() //save the loaded user data to Q2A
+        public async void storeUserData() //save the loaded user data to Q2A
         {
             string _connectionString = ConfigurationManager.ConnectionStrings["q2a"].ConnectionString;
             MySqlConnection conn = new MySqlConnection(_connectionString);
-            Console.WriteLine("Transfering users...");
             conn.Open();
 
-            // Sets the default values of these columns to null
-            string createip = "ALTER TABLE qa_users ALTER createip SET DEFAULT '';";
-            string loginip = "ALTER TABLE qa_users ALTER loginip SET DEFAULT '';";
-            try
-            {
-                MySqlCommand cmd = new MySqlCommand(createip, conn);
-                cmd.ExecuteNonQuery();
-                cmd = new MySqlCommand(loginip, conn);
-                cmd.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error setting default value: " + ex.Message);
-            }
-
-            string sql4Users = "INSERT INTO qa_users (userid, created, loggedin, email, handle, level, flags, wallposts) VALUES (@userid, @created, @loggedin, @email, @handle, @level, @flags, @wallposts)";
-
+            // Queries to insert users
+            string sql4Users = "INSERT INTO qa_users (userid, created, createip, loggedin, loginip, email, handle, level, flags, wallposts) VALUES (@userid, @created, @createip, @loggedin, @loginip, @email, @handle, @level, @flags, @wallposts)";
+            string sql4Points = "Insert INTO qa_userpoints (userid, points, qposts, qupvotes, qvoteds, upvoteds) VALUES (@userid, @points, @qposts, @qupvotes, @qvoteds, @upvoteds)";
             //the profile writing is actually 4 inserts
             string sql4Profiles = "Insert INTO qa_userprofile (userid, title, content) VALUES (@userid, @title, @content)";
-
-            string sql4Points = "Insert INTO qa_userpoints (userid, points, qposts, qupvotes, qvoteds, upvoteds) VALUES (@userid, @points, @qposts, @qupvotes, @qvoteds, @upvoteds)";
+            Console.WriteLine("Transfering users...");
             //make a write query for each user
             foreach (var user in newUsers)
             {
@@ -215,7 +199,9 @@ namespace SupportSiteETL
                     {
                         cmd.Parameters.AddWithValue("@userid", user.userId);
                         cmd.Parameters.AddWithValue("@created", user.created_at);
+                        cmd.Parameters.AddWithValue("@createip", "");
                         cmd.Parameters.AddWithValue("@loggedin", user.loggedin);
+                        cmd.Parameters.AddWithValue("@loginip", "");
                         cmd.Parameters.AddWithValue("@email", user.email);
                         cmd.Parameters.AddWithValue("@handle", user.handle);
                         cmd.Parameters.AddWithValue("@level", user.level);
