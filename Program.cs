@@ -8,8 +8,7 @@ using SupportSiteETL;
 //testDiscourseDataFetch();
 //testQ2AUserFetch();
 //testQ2ADeleteUsers();
-//testQ2ADeleteUsers();
-//testTransfer();
+testTransfer();
 
 Console.WriteLine("\nProgram done");
 
@@ -136,7 +135,7 @@ void testQ2ADeleteUsers()
         Console.WriteLine("\t" + qUser["userid"] + ": " + qUser["handle"]);
     }
 
-    Console.WriteLine("\nDeleted {0} users", result);
+    Console.WriteLine("\nModified {0} rows", result);
 
     Console.WriteLine("\nAll Q2A Users after deleting:");
     foreach (var qUser in afterDelete)

@@ -111,7 +111,7 @@ namespace SupportSiteETL
             nameGen = new AnonNameGen(); //generates the usernames, e.g. anon127443
 
             //contains all the info for what level 4 users on discourse and what new role they have on Q2A
-            discourseLookupTable = new Dictionary<int,string>();
+            discourseLookupTable = new Dictionary<int, string>();
             populateLookupTable();
 
             q2aConnection = new QTAConnection();
@@ -121,15 +121,15 @@ namespace SupportSiteETL
         private void populateLookupTable()
         {
             //fill in the lookup table from old discourse usernames to their new role name under Q2A
-            
-            
+
+
             var lines = File.ReadLines("roleMappings.txt");
             //file should be under AssureSupportSiteETL\bin\Debug\net6.0\roleMappings.txt'.'
 
             foreach (string line in lines)
             {
                 string[] data = line.Split(',');
-                if(data.Length != 2) //there should always be 2 fields (discourse_user_id, newRole)
+                if (data.Length != 2) //there should always be 2 fields (discourse_user_id, newRole)
                 {
                     Console.WriteLine("Error, roleMappings.txt is not in the correct format!");
                     return;
@@ -138,7 +138,7 @@ namespace SupportSiteETL
                 string newRole = data[1];
 
                 discourseLookupTable.Add(id, newRole);
-            }    
+            }
         }
 
         private int getRoleMap(string role)
@@ -184,24 +184,26 @@ namespace SupportSiteETL
             Console.WriteLine("Transfering users...");
             conn.Open();
 
-            string sqlMode = "SET GLOBAl sql_mode=''"; //makes default value null to avoid errors, when fields are left unspecified
+            // Sets the default values of these columns to null
+            string createip = "ALTER TABLE qa_users ALTER createip SET DEFAULT '';";
+            string loginip = "ALTER TABLE qa_users ALTER loginip SET DEFAULT '';";
             try
             {
-                using (MySqlCommand cmd = new MySqlCommand(sqlMode, conn))
-                {
-                    cmd.ExecuteNonQuery();
-                }
+                MySqlCommand cmd = new MySqlCommand(createip, conn);
+                cmd.ExecuteNonQuery();
+                cmd = new MySqlCommand(loginip, conn);
+                cmd.ExecuteNonQuery();
             }
             catch (Exception ex)
             {
-                Console.Write("Error setting global default value: " + ex.Message);
+                Console.WriteLine("Error setting default value: " + ex.Message);
             }
 
             string sql4Users = "INSERT INTO qa_users (userid, created, loggedin, email, handle, level, flags, wallposts) VALUES (@userid, @created, @loggedin, @email, @handle, @level, @flags, @wallposts)";
 
             //the profile writing is actually 4 inserts
             string sql4Profiles = "Insert INTO qa_userprofile (userid, title, content) VALUES (@userid, @title, @content)";
-            
+
             string sql4Points = "Insert INTO qa_userpoints (userid, points, qposts, qupvotes, qvoteds, upvoteds) VALUES (@userid, @points, @qposts, @qupvotes, @qvoteds, @upvoteds)";
             //make a write query for each user
             foreach (var user in newUsers)
@@ -241,7 +243,7 @@ namespace SupportSiteETL
                         cmd.Parameters.AddWithValue("@content", user.about);
                         cmd.ExecuteNonQuery();
                     }
-                    
+
                     using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn)) //location
                     {
                         cmd.Parameters.AddWithValue("@userid", user.userId);
@@ -263,10 +265,12 @@ namespace SupportSiteETL
                         cmd.Parameters.AddWithValue("@content", user.website);
                         cmd.ExecuteNonQuery();
                     }
+
+                    Console.WriteLine(string.Format("Inserted user with ID: {0} - {1}", user.userId, user.handle));
                 }
                 catch (Exception ex)
                 {
-                    Console.Write("Error adding new user: " + ex.Message);
+                    Console.WriteLine("Error adding new user: " + ex.Message);
                 }
             }
             conn.Close();
@@ -286,7 +290,7 @@ namespace SupportSiteETL
             newUser.email = newUser.handle + "@example.com"; //just a default email
 
             newUser.level = 0; //default user
-            if(discourseLookupTable.ContainsKey(dUserId)) //check for a mapping
+            if (discourseLookupTable.ContainsKey(dUserId)) //check for a mapping
                 newUser.level = getRoleMap(discourseLookupTable[dUserId]); //oldId -> newRole -> roleLevel#
 
             newUser.flags = 0;
@@ -307,9 +311,9 @@ namespace SupportSiteETL
             //basic formula to calculate points
             int basePoints = 100;
             int mult = 10; //multiply value for all other point sums
-            newUser.points = 100 + mult*(2*newUser.qposts + newUser.qupvotes + newUser.qvoteds);
+            newUser.points = 100 + mult * (2 * newUser.qposts + newUser.qupvotes + newUser.qvoteds);
             //there are other fields here that correspond to points but they are already zeros
-            
+
 
             return newUser;
         }

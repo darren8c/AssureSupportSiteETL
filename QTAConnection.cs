@@ -69,7 +69,7 @@ namespace SupportSiteETL
         public int DeleteUsers()
         {
             int rowsAffected = 0;
-            int tablesAffected = 0;
+            int result = 0;
 
             // We fetch [0] because there should only be one super-admin
             var superAdmin = ExecuteQuery("SELECT userid FROM qa_users WHERE level = '120'")[0];
@@ -77,7 +77,6 @@ namespace SupportSiteETL
 
             // All tables to delete the user from
             string[] tablesToDeleteFrom = {
-                "qa_userevents",
                 "qa_userevents",
                 "qa_userfavorites",
                 // "qa_userfields", // This doesn't contain any user-specific information
@@ -89,22 +88,34 @@ namespace SupportSiteETL
                 "qa_userpoints",
                 "qa_userprofile",
                 "qa_users",
-                "qa_uservotes"
+                "qa_uservotes",
             };
 
             // Execute a delete statement for each table, keeping the super-admin
             foreach(string table in tablesToDeleteFrom) {
                 string sql = string.Format("DELETE FROM {0} WHERE userid <> {1};", table, superAdminId);
-                int result = ExecuteUpdate(sql);
-                // If the table was modified, increase the number of tables affected
-                if (result > 0) {
-                    tablesAffected++;
-                    rowsAffected += result;
-                }
+                result = ExecuteUpdate(sql);
+                rowsAffected += result;
+
+                Console.WriteLine(string.Format("Deleted {0} rows from {1}", result, table));
             }
 
+            // Separate query because the ID field is named different in this table
+            string sharedevents = string.Format("DELETE FROM qa_sharedevents WHERE lastuserid <> {0};", superAdminId);
+            result = ExecuteUpdate(sharedevents);
+            Console.WriteLine(string.Format("Deleted {0} rows from qa_sharedevents", result));
+
             // Compute the number of users deleted
-            return tablesAffected > 0 ? rowsAffected / tablesAffected : 0;
+            return rowsAffected;
+        }
+
+        public int DeletePosts() {
+            int rowsAffected = 0;
+
+            string sql = "DELETE FROM qa_posts";
+
+            rowsAffected = ExecuteUpdate(sql);
+            return rowsAffected;
         }
 
         /// <summary>
