@@ -13,6 +13,11 @@ namespace SupportSiteETL.Databases
         {
             _connectionString = ConfigurationManager.ConnectionStrings["discourse"].ConnectionString;
         }
+        public NpgsqlConnection retrieveConnection()
+        {
+            string connStr = _connectionString;
+            return new NpgsqlConnection(connStr);
+        }
 
         // Tests the connection to the database.
         // Returns true if the query was successful, else false
@@ -43,62 +48,7 @@ namespace SupportSiteETL.Databases
             conn.Close();
             return result;
         }
-
-        // Gets all users joined with their user stats
-        public List<Dictionary<string, string>> GetUsers()
-        {
-            return ExecuteQuery("SELECT * FROM public.users JOIN public.user_stats ON public.users.id=public.user_stats.user_id ORDER BY id;");
-        }
-
-        // Executes a query on the Discourse database, returning the result as a list of dictionaries.
-        // Each entry represents a single row in the query, with the keys being row/field names.
-        public List<Dictionary<string, string>> ExecuteQuery(string query)
-        {
-            List<Dictionary<string, string>> discourseUsers = new List<Dictionary<string, string>>();
-
-            using NpgsqlConnection conn = new NpgsqlConnection(_connectionString);
-            try
-            {
-                conn.Open();
-
-                // Retrieve all rows
-                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
-                using (NpgsqlDataReader reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        // Create a new Dictionary to represent the user
-                        Dictionary<string, string> user = new Dictionary<string, string>();
-
-                        // Iterate over all fields in the row
-                        for (int i = 0; i < reader.FieldCount; i++)
-                        {
-                            // Get the field's name
-                            string fieldName = reader.GetName(i);
-                            // Fetch the value as a string, defaulting to "NULL" if the value doesn't exist
-                            string value = reader.GetValue(i).ToString() ?? "NULL";
-
-                            // Add the fieldname and value to the user/dictionary
-                            user.Add(fieldName, value);
-                        }
-
-                        discourseUsers.Add(user);
-                    }
-                }
-            }
-            catch (Exception err)
-            {
-                Console.WriteLine(err.ToString());
-            }
-            finally
-            {
-                conn.Close();
-            }
-
-            return discourseUsers;
-        }
-
-
+        
         // Executes an update, such as INSERT or DELETE, on the Discourse database.
         // Returns the number of rows affected, if any, else -1.
         public int ExecuteUpdate(string statement)
@@ -127,5 +77,55 @@ namespace SupportSiteETL.Databases
 
             return rowsAffected;
         }
+
+        // Executes a query on the Discourse database, returning the result as a list of dictionaries.
+        // Each entry represents a single row in the query, with the keys being row/field names.
+        public List<Dictionary<string, string>> ExecuteQuery(string query)
+        {
+            List<Dictionary<string, string>> data = new List<Dictionary<string, string>>();
+
+            using NpgsqlConnection conn = new NpgsqlConnection(_connectionString);
+            try
+            {
+                conn.Open();
+
+                // Retrieve all rows
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
+                using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        // Create a new Dictionary to represent the user
+                        Dictionary<string, string> user = new Dictionary<string, string>();
+
+                        // Iterate over all fields in the row
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            // Get the field's name
+                            string fieldName = reader.GetName(i);
+                            // Fetch the value as a string, defaulting to "NULL" if the value doesn't exist
+                            string value = reader.GetValue(i).ToString() ?? "NULL";
+
+                            // Add the fieldname and value to the user/dictionary
+                            user.Add(fieldName, value);
+                        }
+
+                        data.Add(user);
+                    }
+                }
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine(err.ToString());
+            }
+            finally
+            {
+                conn.Close();
+            }
+
+            return data;
+        }
+
     }
+
 }

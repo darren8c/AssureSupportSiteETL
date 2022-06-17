@@ -1,7 +1,9 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using SupportSiteETL.Databases;
-using SupportSiteETL.Migration;
+using SupportSiteETL.Migration.Transform;
+using SupportSiteETL.Migration.Extract;
+using SupportSiteETL.Migration.Load;
 
 
 //testAnonNames();
@@ -16,7 +18,7 @@ Console.WriteLine("\nProgram done");
 void testTransfer()
 {
     UserTransferer ut = new UserTransferer();
-    ut.loadUserData();
+    ut.ExtractUserData();
 
     //Testing to see if user data looks right
 
@@ -52,11 +54,9 @@ void testAnonNames()
 
 void testDatabaseConnections()
 {
-    Q2AConnection q2aConnection = new Q2AConnection();
-    var q2aUsers = q2aConnection.GetUsers();
-
-    DiscourseConnection discourseConnection = new DiscourseConnection();
-    var discourseUsers = discourseConnection.GetUsers();
+    Extractor extracter = new Extractor();
+    var q2aUsers = extracter.GetQ2AUsers();
+    var discourseUsers = extracter.GetDiscourseUsers();
 
     Console.WriteLine("Databases Connected!");
 
@@ -114,8 +114,8 @@ void testQ2AUserFetch()
         return str.TrimEnd();
     };
 
-    Q2AConnection q2aConnection = new Q2AConnection();
-    var q2aUsers = q2aConnection.GetUsers();
+    Extractor extractor = new Extractor();
+    var q2aUsers = extractor.GetQ2AUsers();
 
     Console.WriteLine("\nAll Q2A Users:");
     foreach (var qUser in q2aUsers)
@@ -126,10 +126,12 @@ void testQ2AUserFetch()
 
 void testQ2ADeleteUsers()
 {
-    Q2AConnection q2aConnection = new Q2AConnection();
-    var beforeDelete = q2aConnection.GetUsers();
-    int result = q2aConnection.DeleteUsers();
-    var afterDelete = q2aConnection.GetUsers();
+    Extractor extractor = new Extractor();
+    Deleter deleter = new Deleter();
+
+    var beforeDelete = extractor.GetQ2AUsers();
+    int result = deleter.DeleteUsers();
+    var afterDelete = extractor.GetQ2AUsers();
 
     Console.WriteLine("\nAll Q2A Users before deleting:");
     foreach (var qUser in beforeDelete)
