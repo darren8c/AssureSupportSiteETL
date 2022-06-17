@@ -11,7 +11,8 @@ using SupportSiteETL.Migration.Load;
 //testDiscourseDataFetch();
 //testQ2AUserFetch();
 //testQ2ADeleteUsers();
-testTransfer();
+testQ2ADeleteData(); //delete all the entered site data
+//testTransfer();
 
 Console.WriteLine("\nProgram done");
 
@@ -146,4 +147,19 @@ void testQ2ADeleteUsers()
     {
         Console.WriteLine("\t" + qUser["userid"] + ": " + qUser["handle"]);
     }
+}
+
+void testQ2ADeleteData() //deletes users, categories, and all posts
+{
+    Loader loader = new Loader();
+    Deleter deleter = new Deleter();
+
+    deleter.DeletePosts();
+    Console.WriteLine("Posts Deleted!");
+    deleter.DeleteCategories();
+    Console.WriteLine("Categories Deleted!");
+    deleter.DeleteUsers();
+    Console.WriteLine("(non super-admin) Users Deleted!");
+
+    loader.UpdateSiteStats();
 }

@@ -98,7 +98,7 @@ namespace SupportSiteETL.Migration.Transform
             foreach (var user in newUsers)
                 loader.addUser(user); //add each users piece of data
 
-            loader.UpdateUserCount(); //update user count so the site has the User count stat correct.
+            loader.UpdateSiteStats(); //update user count so the site has the User count stat correct.
 
         }
 

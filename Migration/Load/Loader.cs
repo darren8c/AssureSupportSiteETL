@@ -20,25 +20,38 @@ namespace SupportSiteETL.Migration.Load
             q2a = new Q2AConnection();
         }
         
-        //updates the cache_userpointscount stat which tracks the number of users on the site
-        public void UpdateUserCount()
+        //updates the stats on the bottom of the site
+        //includes
+        //cache_userpointscount # of users
+        //cache_qcount # of questions
+        //cache_acount # of answers
+        //cache_ccount # of comments
+        public void UpdateSiteStats()
         {
-            //update the user count field in the options table
-            MySqlConnection conn = q2a.retrieveConnection();
-            int totalUsers = 1; //a query will determine the count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_users", "cache_userpointscount"); //updates user count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='Q'", "cache_qcount"); //updates question count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='A'", "cache_acount"); //updates answer count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='C'", "cache_ccount"); //updates comment count
+        }
+        //helps the updateSiteStats function, executes a scaler function and then saves the value into another field in qa_options
+        //findCountCommand should return 1 value which will be stored into the content where title=titleName
+        //setup for integers only
+        private void UpdateStatHelper(string findCountCommand, string titleName)
+        {
+            int contentValue = 0;
+            string updateCommand = "UPDATE qa_options set content = @content WHERE title='" + titleName + "'";
 
-            string findUserCountCommand = "SELECT COUNT(*) FROM qa_users";
-            string userCountUpdateCommand = "UPDATE qa_options SET content = @content WHERE title='cache_userpointscount'";
+            MySqlConnection conn = q2a.retrieveConnection();
             conn.Open();
             try
             {
-                using (MySqlCommand cmd = new MySqlCommand(findUserCountCommand, conn)) //count number of users
+                using (MySqlCommand cmd = new MySqlCommand(findCountCommand, conn)) //count number of users
                 {
-                    totalUsers = (int)(Int64)cmd.ExecuteScalar(); //executes query and returns entry in first row and column
+                    contentValue = (int)(Int64)cmd.ExecuteScalar(); //executes query and returns entry in first row and column
                 }
-                using (MySqlCommand cmd = new MySqlCommand(userCountUpdateCommand, conn)) //write to qa_users
+                using (MySqlCommand cmd = new MySqlCommand(updateCommand, conn)) //write to qa_users
                 {
-                    cmd.Parameters.AddWithValue("@content", totalUsers);
+                    cmd.Parameters.AddWithValue("@content", contentValue);
                     cmd.ExecuteNonQuery();
                 }
             }
@@ -46,7 +59,6 @@ namespace SupportSiteETL.Migration.Load
             {
                 Console.WriteLine("Error adding user count data: " + ex.Message);
             }
-            conn.Close();
         }
 
         //add user data to all the different tables given user data

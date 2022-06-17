@@ -69,20 +69,73 @@ namespace SupportSiteETL.Migration.Load
             result = q2a.ExecuteUpdate(sharedevents);
             Console.WriteLine(string.Format("Deleted {0} rows from qa_sharedevents", result));
 
-            loader.UpdateUserCount(); //update settings table with correct user count
+            loader.UpdateSiteStats(); //update settings table
 
             // Compute the number of users deleted
             return rowsAffected;
         }
 
-        public int DeletePosts()
+
+        //remove all the posts on the site, this clears all data from tables relating to posts, tags, likes, etc.
+        public void DeletePosts()
         {
-            int rowsAffected = 0;
+            // All tables to clear
+            string[] tableList = {
+                "qa_tagwords",
+                "qa_titlewords",
+                "qa_contentwords",
+                "qa_posttags",
+                "qa_uservotes",
+                "qa_words",
+            };
+
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                foreach(string table in tableList) //clear each table
+                {
+                    using (MySqlCommand cmd = new MySqlCommand("DELETE FROM " + table, conn)) //remove all data in table
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                    //Console.WriteLine("Deleted data from " + table);
+                }
+                //deleting from qa_posts is more difficult because foreign key constraints
+                string postDeleteCommand = "DELETE FROM qa_posts ORDER BY postid DESC"; //delete in an order to not violate contraints
+                using (MySqlCommand cmd = new MySqlCommand(postDeleteCommand, conn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error when deleteing posts: " + ex);
+            }
+            conn.Close();
 
             string sql = "DELETE FROM qa_posts";
+        }
 
-            rowsAffected = q2a.ExecuteUpdate(sql);
-            return rowsAffected;
+        //remove the categories table data
+        public void DeleteCategories()
+        {
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand("DELETE FROM qa_categories", conn)) //removes table but not field names
+                {
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error when deleteing categories: " + ex);
+            }
+            conn.Close();
+
+            string sql = "DELETE FROM qa_posts";
         }
     }
 }
