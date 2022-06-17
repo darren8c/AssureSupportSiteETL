@@ -11,18 +11,27 @@ using SupportSiteETL.Migration.Load;
 //testDiscourseDataFetch();
 //testQ2AUserFetch();
 //testQ2ADeleteUsers();
+//testTransferUsers(); 
+
 testQ2ADeleteData(); //delete all the entered site data
-//testTransfer();
+testTransferAll();
 
 Console.WriteLine("\nProgram done");
 
-void testTransfer()
+void testTransferAll() //transfer both users and posts
+{
+    Transferer transferer = new Transferer();
+    transferer.Extract();
+    transferer.Load();
+}
+
+void testTransferUsers()
 {
     UserTransferer ut = new UserTransferer();
-    ut.ExtractUserData();
+    ut.Extract();
 
     //Testing to see if user data looks right
-
+    //
     /*
     for(int i = 0; i < ut.newUsers.Count; i++)
     {
@@ -39,7 +48,7 @@ void testTransfer()
     }
     */
 
-    ut.storeUserData();
+    ut.Load();
 }
 
 void testAnonNames()

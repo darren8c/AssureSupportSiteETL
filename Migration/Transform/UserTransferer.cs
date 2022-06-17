@@ -13,11 +13,14 @@ using SupportSiteETL.Migration.Load;
 
 namespace SupportSiteETL.Migration.Transform
 {
+    using User = Dictionary<string, string>;
+
     //class that handles the necessary info from discourse and q2a and then can write to the q2a
     public class UserTransferer
     {
         public List<Q2AUserData> newUsers;
         public Dictionary<int, string> discourseLookupTable;
+        public Dictionary<int, int> oldToNewId; //go from discourse user_id to q2a userid.
 
         private Extractor extractor;
         private Loader loader;
@@ -28,8 +31,11 @@ namespace SupportSiteETL.Migration.Transform
             newUsers = new List<Q2AUserData>();
             nameGen = new AnonNameGen(); //generates the usernames, e.g. anon127443
 
+            oldToNewId = new Dictionary<int, int>();
+            
             //contains all the info for what level 4 users on discourse and what new role they have on Q2A
             discourseLookupTable = new Dictionary<int, string>();
+
             populateLookupTable();
 
             extractor = new Extractor();
@@ -71,27 +77,28 @@ namespace SupportSiteETL.Migration.Transform
                 return 0; //normal user
         }
 
-        public void ExtractUserData() //fill in the list of new users, does not actually write any data yet
+        public void Extract() //fill in the list of new users, does not actually write any data
         {
             //find the last userid of the Q2A users
             int lastId = -1000; //arbitrary minimum
-            var q2aCurrUsers = extractor.GetQ2AUsers();
-            foreach (var user in q2aCurrUsers)
+            List<User> q2aCurrUsers = extractor.GetQ2AUsers();
+            foreach (User user in q2aCurrUsers)
                 if (int.Parse(user["userid"]) > lastId)
                     lastId = int.Parse(user["userid"]);
             //this will be the first id the new user receives (i.e. if the q2a site had 3 users, the first discourse user is not id 4)
             int currId = lastId + 1;
 
             //for each of the discourse users, fill in the needed data
-            var discourseUsers = extractor.GetDiscourseUsers();
-            foreach (var dUser in discourseUsers)
+            List<User> discourseUsers = extractor.GetDiscourseUsers();
+            foreach (User dUser in discourseUsers)
             {
                 newUsers.Add(gatherData(currId, dUser));
+                oldToNewId.Add(int.Parse(dUser["id"]), currId);
                 currId++;
             }
         }
 
-        public async void storeUserData() //save the loaded user data to Q2A
+        public async void Load() //save the loaded user data to Q2A
         {
             Console.WriteLine("Transfering users...");
             //add all the user data over to the tables
@@ -104,7 +111,7 @@ namespace SupportSiteETL.Migration.Transform
 
 
         //fill in the needed data from the databases for this user
-        private Q2AUserData gatherData(int userId, Dictionary<string, string> dUser)
+        private Q2AUserData gatherData(int userId, User dUser)
         {
             Q2AUserData newUser = new Q2AUserData();
 

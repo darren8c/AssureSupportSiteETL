@@ -28,6 +28,46 @@ namespace SupportSiteETL.Migration.Extract
         {
             return dc.ExecuteQuery("SELECT * FROM public.users JOIN public.user_stats ON public.users.id=public.user_stats.user_id ORDER BY id;");
         }
+        public List<Dictionary<string, string>> GetDiscourseTopics()
+        {
+            return dc.ExecuteQuery("SELECT * FROM public.topics ORDER BY id;");
+        }
+
+        //get all the posts with a certain topic id, basically all the posts relating to a certain thread.
+        public List<Dictionary<string, string>> GetDiscoursePostsOnTopic(int topicId)
+        {
+            return dc.ExecuteQuery("SELECT * FROM public.posts where topic_id=" + topicId.ToString() + " ORDER BY post_number;");
+        }
+
+        public uint GetQ2ALastPostId()
+        {
+            string getPostCountCommand = "SELECT COUNT(*) from qa_posts";
+            string getLastPostIdCommand = "SELECT postid FROM qa_posts ORDER BY postid limit 1"; //find the highest postid
+            uint postid = 0;
+
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                int postNum = 0;
+                using (MySqlCommand cmd = new MySqlCommand(getPostCountCommand, conn)) //count number of posts
+                {
+                    postNum = (int)(Int64)(cmd.ExecuteScalar()); //executes query and returns entry in first row and column
+                }
+                if(postNum != 0) //there is at least one post
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(getLastPostIdCommand, conn)) //find last post id, requires at least one row to exist
+                    {
+                        postid = (uint)(cmd.ExecuteScalar()); //executes query and returns entry in first row and column
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error retrieving post count: " + ex.Message);
+            }
+            return postid;
+        }
 
 
         /// <summary>

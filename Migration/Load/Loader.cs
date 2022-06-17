@@ -137,6 +137,54 @@ namespace SupportSiteETL.Migration.Load
             }
             conn.Close();
         }
+
+
+        //add user data to all the different tables given user data
+        public void addPost(Q2APost post)
+        {
+            MySqlConnection conn = q2a.retrieveConnection();
+
+            // Queries to posts
+            string addPostCommand = "INSERT INTO qa_posts (postid,  type,  parentid,  categoryid, catidpath1, acount, amaxvote, userid, " +
+                "upvotes, downvotes, netvotes, views, flagcount, format, created, updated, updatetype, title, content, notify) " +
+                "VALUES (@postid,  @type,  @parentid,  @categoryid, @catidpath1, @acount, @amaxvote, @userid, @upvotes, @downvotes, " +
+                "@netvotes, @views, @flagcount, @format, @created, @updated, @updatetype, @title, @content, @notify)";
+
+            conn.Open();
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand(addPostCommand, conn)) //to qa_users
+                {
+                    cmd.Parameters.AddWithValue("@postid", post.postid);
+                    cmd.Parameters.AddWithValue("@type", post.type);
+                    cmd.Parameters.AddWithValue("@parentid", post.parentid);
+                    cmd.Parameters.AddWithValue("@categoryid", post.categoryid);
+                    cmd.Parameters.AddWithValue("@catidpath1", post.catidpath1);
+                    cmd.Parameters.AddWithValue("@acount", post.acount);
+                    cmd.Parameters.AddWithValue("@amaxvote", post.amaxvote);
+                    cmd.Parameters.AddWithValue("@userid", post.userid);
+                    cmd.Parameters.AddWithValue("@upvotes", post.upvotes);
+                    cmd.Parameters.AddWithValue("@downvotes", post.downvotes);
+                    cmd.Parameters.AddWithValue("@netvotes", post.netvotes);
+                    cmd.Parameters.AddWithValue("@views", post.views);
+                    cmd.Parameters.AddWithValue("@flagcount", post.flagcount);
+                    cmd.Parameters.AddWithValue("@format", post.format);
+                    cmd.Parameters.AddWithValue("@created", post.created);
+                    cmd.Parameters.AddWithValue("@updated", post.updated);
+                    cmd.Parameters.AddWithValue("@updatetype", post.updateType);
+                    cmd.Parameters.AddWithValue("@title", post.title);
+                    cmd.Parameters.AddWithValue("@content", post.content);
+                    cmd.Parameters.AddWithValue("@notify", post.notify);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error adding new user: " + ex.Message);
+                Console.ReadLine();
+            }
+            conn.Close();
+        }
     }
 
 }
