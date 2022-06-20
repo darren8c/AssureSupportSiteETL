@@ -12,7 +12,7 @@ using SupportSiteETL.Migration.Load;
 //testQ2AUserFetch();
 //testQ2ADeleteUsers();
 //testTransferUsers(); 
-
+//testTransferCategories();
 testQ2ADeleteData(); //delete all the entered site data
 testTransferAll();
 
@@ -23,6 +23,13 @@ void testTransferAll() //transfer both users and posts
     Transferer transferer = new Transferer();
     transferer.Extract();
     transferer.Load();
+}
+
+void testTransferCategories()
+{
+    CategoryTransferer cTran = new CategoryTransferer();
+    cTran.Extract();
+    cTran.Load();
 }
 
 void testTransferUsers()

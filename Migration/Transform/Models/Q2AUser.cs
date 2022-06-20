@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SupportSiteETL.Migration.Transform
+namespace SupportSiteETL.Migration.Transform.Models
 {
-    public class Q2AUserData
+    public class Q2AUser
     {
         //for qa_users
         public int userId = -1;
@@ -47,7 +47,7 @@ namespace SupportSiteETL.Migration.Transform
         public int downvoteds;
         public int bonus;
 
-        public Q2AUserData()
+        public Q2AUser()
         {
             //for qa_users
             userId = -1;

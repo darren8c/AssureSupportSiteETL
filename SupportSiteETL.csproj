@@ -13,6 +13,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Resources\categoryMappings.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\roleMappings.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SupportSiteETL.Migration.Transform
+namespace SupportSiteETL.Migration.Transform.Models
 {
     //keeps track of all post info
     public class Q2APost

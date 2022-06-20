@@ -10,6 +10,7 @@ using System.Configuration;
 using SupportSiteETL.Databases;
 using SupportSiteETL.Migration.Extract;
 using SupportSiteETL.Migration.Load;
+using SupportSiteETL.Migration.Transform.Models;
 
 namespace SupportSiteETL.Migration.Transform
 {
@@ -18,7 +19,7 @@ namespace SupportSiteETL.Migration.Transform
     //class that handles the necessary info from discourse and q2a and then can write to the q2a
     public class UserTransferer
     {
-        public List<Q2AUserData> newUsers;
+        public List<Q2AUser> newUsers;
         public Dictionary<int, string> discourseLookupTable;
         public Dictionary<int, int> oldToNewId; //go from discourse user_id to q2a userid.
 
@@ -28,7 +29,7 @@ namespace SupportSiteETL.Migration.Transform
 
         public UserTransferer()
         {
-            newUsers = new List<Q2AUserData>();
+            newUsers = new List<Q2AUser>();
             nameGen = new AnonNameGen(); //generates the usernames, e.g. anon127443
 
             oldToNewId = new Dictionary<int, int>();
@@ -111,9 +112,9 @@ namespace SupportSiteETL.Migration.Transform
 
 
         //fill in the needed data from the databases for this user
-        private Q2AUserData gatherData(int userId, User dUser)
+        private Q2AUser gatherData(int userId, User dUser)
         {
-            Q2AUserData newUser = new Q2AUserData();
+            Q2AUser newUser = new Q2AUser();
 
             int dUserId = int.Parse(dUser["id"]);
             newUser.userId = userId;

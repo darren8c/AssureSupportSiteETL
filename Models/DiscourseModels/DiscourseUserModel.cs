@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SupportSiteETL.Models.DiscourseModels
 {
-    public class DiscourseUser
+    public class DiscourseUserModel
     {
         #region Properties
         public int Id { get; set; }
@@ -87,7 +87,7 @@ namespace SupportSiteETL.Models.DiscourseModels
         
         #endregion
 
-        public DiscourseUser(int id, string username, DateTime created_at, DateTime updated_at, string name, int seen_notification_id, DateTime last_posted_at, string password_hash, string salt, bool active, string username_lower, DateTime last_seen_at, bool admin, DateTime last_emailed_at, int trust_level, bool approved, int approved_by_id, DateTime approved_at, DateTime previous_visit_at, DateTime suspended_at, DateTime suspended_till, DateTime date_of_birth, int views, int flag_level, string ip_address, bool moderator, string title, int uploaded_avatar_id, string locale, int primary_group_id, string registration_ip_address, bool staged, DateTime first_seen_at, DateTime silenced_till, int group_locked_trust_level, int manual_locked_trust_level, string secure_identifier, int flair_group_id) {
+        public DiscourseUserModel(int id, string username, DateTime created_at, DateTime updated_at, string name, int seen_notification_id, DateTime last_posted_at, string password_hash, string salt, bool active, string username_lower, DateTime last_seen_at, bool admin, DateTime last_emailed_at, int trust_level, bool approved, int approved_by_id, DateTime approved_at, DateTime previous_visit_at, DateTime suspended_at, DateTime suspended_till, DateTime date_of_birth, int views, int flag_level, string ip_address, bool moderator, string title, int uploaded_avatar_id, string locale, int primary_group_id, string registration_ip_address, bool staged, DateTime first_seen_at, DateTime silenced_till, int group_locked_trust_level, int manual_locked_trust_level, string secure_identifier, int flair_group_id) {
             Id = id;
             Username = username;
             CreatedAt = created_at;

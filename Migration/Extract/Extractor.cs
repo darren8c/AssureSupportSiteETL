@@ -42,7 +42,7 @@ namespace SupportSiteETL.Migration.Extract
         public uint GetQ2ALastPostId()
         {
             string getPostCountCommand = "SELECT COUNT(*) from qa_posts";
-            string getLastPostIdCommand = "SELECT postid FROM qa_posts ORDER BY postid limit 1"; //find the highest postid
+            string getLastPostIdCommand = "SELECT postid FROM qa_posts ORDER BY postid DESC LIMIT 1"; //find the highest postid
             uint postid = 0;
 
             MySqlConnection conn = q2a.retrieveConnection();
@@ -82,6 +82,11 @@ namespace SupportSiteETL.Migration.Extract
             return q2a.ExecuteQuery("SELECT * FROM qa_users ORDER BY userid;");
         }
 
+        //get all the categories currently on q2a
+        public List<Dictionary<string, string>> GetQ2ACategories()
+        {
+            return q2a.ExecuteQuery("SELECT * FROM qa_categories ORDER BY categoryid;");
+        }
     }
 
 }

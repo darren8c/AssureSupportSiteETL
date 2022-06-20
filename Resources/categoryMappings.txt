@@ -1,0 +1,13 @@
+﻿1,Paratext,This category is for paratext questions.
+2,Paratext, 
+3,Delete,These posts should be deleted.
+4,Delete, 
+5,Paratext, 
+6,Paratext, 
+7,Paratext, 
+8,Delete, 
+9,Delete, 
+11,Delete, 
+12,Publishing Assistant,This category is for publishing questions.
+13,Paratext Lite,This category is for paratext questions.
+14,Paratext, 

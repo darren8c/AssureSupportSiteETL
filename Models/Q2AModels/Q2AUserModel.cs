@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SupportSiteETL.Models.Q2AModels
 {
-    public class Q2AUser
+    public class Q2AUserModel
     {
 
         // These properties are defined by the Q2A database schema
@@ -56,7 +56,7 @@ namespace SupportSiteETL.Models.Q2AModels
         #endregion
 
 
-        public Q2AUser(int userid, DateTime created, string createip, string email, string handle, int avatarblobid, int avatarwidth, int avatarheight, string passsalt, string passcheck, string passhash, int level, DateTime loggedin, string loginip, DateTime written, string writeip, string emailcode, string sessioncode, string sessionsource, int flags, int wallposts) {
+        public Q2AUserModel(int userid, DateTime created, string createip, string email, string handle, int avatarblobid, int avatarwidth, int avatarheight, string passsalt, string passcheck, string passhash, int level, DateTime loggedin, string loginip, DateTime written, string writeip, string emailcode, string sessioncode, string sessionsource, int flags, int wallposts) {
             UserId = userid;
             Created = created;
             CreateIp = createip;

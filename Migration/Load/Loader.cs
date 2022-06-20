@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using SupportSiteETL.Databases;
 using MySql.Data.MySqlClient;
-using SupportSiteETL.Migration.Transform;
+using SupportSiteETL.Migration.Transform.Models;
 
 namespace SupportSiteETL.Migration.Load
 {
@@ -61,8 +61,36 @@ namespace SupportSiteETL.Migration.Load
             }
         }
 
+        //updates the qcount field on a category (how many questions on the given category)
+        public void UpdateCategoryCount(int categoryId)
+        {
+            int count = 0;
+            //count query
+            string findCountCommand = "SELECT COUNT(*) FROM qa_posts WHERE type='Q' AND categoryid='" + categoryId.ToString() + "'";
+            //update query
+            string updateCommand = "UPDATE qa_categories set qcount = @qcount WHERE categoryid='" + categoryId.ToString() + "'";
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand(findCountCommand, conn)) //count number of questions under this category
+                {
+                    count = (int)(Int64)cmd.ExecuteScalar(); //executes query and returns entry in first row and column
+                }
+                using (MySqlCommand cmd = new MySqlCommand(updateCommand, conn)) //write to qa_users
+                {
+                    cmd.Parameters.AddWithValue("@qcount", count);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error adding user count data: " + ex.Message);
+            }
+        }
+
         //add user data to all the different tables given user data
-        public void addUser(Q2AUserData user)
+        public void addUser(Q2AUser user)
         {
             MySqlConnection conn = q2a.retrieveConnection();
 
@@ -185,6 +213,38 @@ namespace SupportSiteETL.Migration.Load
             }
             conn.Close();
         }
+        public void addCategory(Q2ACategory cat)
+        {
+            MySqlConnection conn = q2a.retrieveConnection();
+
+            //command to add a new category
+            string addCategoryCommand = "INSERT INTO qa_categories (categoryid, parentid, title, tags, content, qcount, position, backpath) " +
+                "VALUES (@categoryid, @parentid, @title, @tags, @content, @qcount, @position, @backpath)";
+
+            conn.Open();
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand(addCategoryCommand, conn)) //to qa_users
+                {
+                    cmd.Parameters.AddWithValue("@categoryid", cat.id);
+                    cmd.Parameters.AddWithValue("@parentid", cat.parentid);
+                    cmd.Parameters.AddWithValue("@title", cat.title);
+                    cmd.Parameters.AddWithValue("@tags", cat.tag);
+                    cmd.Parameters.AddWithValue("@content", cat.content);
+                    cmd.Parameters.AddWithValue("@qcount", cat.qcount);
+                    cmd.Parameters.AddWithValue("@position", cat.position);
+                    cmd.Parameters.AddWithValue("@backpath", cat.backpath);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error adding new category: " + ex.Message);
+                Console.ReadLine();
+            }
+            conn.Close();
+        }
     }
+
 
 }
