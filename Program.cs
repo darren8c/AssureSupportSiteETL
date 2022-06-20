@@ -13,8 +13,9 @@ using SupportSiteETL.Migration.Load;
 //testQ2ADeleteUsers();
 //testTransferUsers(); 
 //testTransferCategories();
-testQ2ADeleteData(); //delete all the entered site data
-testTransferAll();
+testWordTables();
+//testQ2ADeleteData(); //delete all the entered site data
+//testTransferAll();
 
 Console.WriteLine("\nProgram done");
 
@@ -23,6 +24,12 @@ void testTransferAll() //transfer both users and posts
     Transferer transferer = new Transferer();
     transferer.Extract();
     transferer.Load();
+}
+
+void testWordTables()
+{
+    WordsTransferer wt = new WordsTransferer();
+    wt.Load();
 }
 
 void testTransferCategories()

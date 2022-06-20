@@ -14,7 +14,6 @@ namespace SupportSiteETL.Migration.Load
         public Q2AConnection q2a;
         public Loader loader;
 
-
         public Deleter()
         {
             q2a = new Q2AConnection();
@@ -86,7 +85,7 @@ namespace SupportSiteETL.Migration.Load
                 "qa_contentwords",
                 "qa_posttags",
                 "qa_uservotes",
-                "qa_words",
+                "qa_words"
             };
 
             MySqlConnection conn = q2a.retrieveConnection();
@@ -113,8 +112,6 @@ namespace SupportSiteETL.Migration.Load
                 Console.WriteLine("Error when deleteing posts: " + ex);
             }
             conn.Close();
-
-            string sql = "DELETE FROM qa_posts";
         }
 
         //remove the categories table data
@@ -136,6 +133,38 @@ namespace SupportSiteETL.Migration.Load
             conn.Close();
 
             string sql = "DELETE FROM qa_posts";
+        }
+
+        //remove all the entries in the tables related to words and searching
+        public void DeleteWordTables()
+        {
+            // All tables to clear
+            string[] tableList = {
+                "qa_titlewords",
+                "qa_contentwords",
+                "qa_tagwords",
+                "qa_posttags",
+                "qa_words",
+            };
+
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                foreach (string table in tableList) //clear each table
+                {
+                    using (MySqlCommand cmd = new MySqlCommand("DELETE FROM " + table, conn)) //remove all data in table
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                    //Console.WriteLine("Deleted data from " + table);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error when deleteing word tables: " + ex);
+            }
+            conn.Close();
         }
     }
 }

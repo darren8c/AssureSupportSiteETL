@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using SupportSiteETL.Databases;
 using MySql.Data.MySqlClient;
 using SupportSiteETL.Migration.Transform.Models;
+using SupportSiteETL.Migration.Transform;
 
 namespace SupportSiteETL.Migration.Load
 {
@@ -213,6 +214,8 @@ namespace SupportSiteETL.Migration.Load
             }
             conn.Close();
         }
+
+        //add a new category to q2a
         public void addCategory(Q2ACategory cat)
         {
             MySqlConnection conn = q2a.retrieveConnection();
@@ -244,6 +247,90 @@ namespace SupportSiteETL.Migration.Load
             }
             conn.Close();
         }
+
+        //set the word tables so searching works properly
+        public void AddToWordTables(List<WordEntry> word, List<ContentWordsEntry> content, List<PostTagsEntry> post, List<TagWordsEntry> tag, List<TagWordsEntry> title)
+        {
+            MySqlConnection conn = q2a.retrieveConnection();
+
+            //command to add a new category
+            string wordsCommand = "INSERT INTO qa_words (wordid, word, titlecount, contentcount, tagwordcount, tagcount) " +
+                "VALUES (@wordid, @word, @titlecount, @contentcount, @tagwordcount, @tagcount)";
+            string contentCommand = "INSERT INTO qa_contentwords (postid, wordid, count, type, questionid) " +
+                "VALUES (@postid, @wordid, @count, @type, @questionid)";
+            string posttagsCommand = "INSERT INTO qa_posttags (postid, wordid, postcreated) " +
+                "VALUES (@postid, @wordid, @postcreated)";
+            string tagCommand = "INSERT INTO qa_tagwords (postid, wordid) " +
+                "VALUES (@postid, @wordid)";
+            string titleCommand = "INSERT INTO qa_titlewords (postid, wordid) " +
+                "VALUES (@postid, @wordid)";
+
+            conn.Open();
+            try
+            {
+                foreach(var x in word) //qa_words
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(wordsCommand, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@wordid", x.wordid);
+                        cmd.Parameters.AddWithValue("@word", x.word);
+                        cmd.Parameters.AddWithValue("@titlecount", x.titlecount);
+                        cmd.Parameters.AddWithValue("@contentcount", x.contentcount);
+                        cmd.Parameters.AddWithValue("@tagwordcount", x.tagwordcount);
+                        cmd.Parameters.AddWithValue("@tagcount", x.tagcount);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                foreach (var x in content) //qa_contentwords
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(contentCommand, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@postid", x.postid);
+                        cmd.Parameters.AddWithValue("@wordid", x.wordid);
+                        cmd.Parameters.AddWithValue("@count", x.count);
+                        cmd.Parameters.AddWithValue("@type", x.type);
+                        cmd.Parameters.AddWithValue("@questionid", x.questionid);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                foreach (var x in post) //qa_posttags
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(posttagsCommand, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@postid", x.postid);
+                        cmd.Parameters.AddWithValue("@wordid", x.wordid);
+                        cmd.Parameters.AddWithValue("@postcreated", x.postcreated);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                foreach (var x in tag) //qa_tagwords
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(tagCommand, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@postid", x.postid);
+                        cmd.Parameters.AddWithValue("@wordid", x.postid);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                foreach (var x in title) //qa_titlewords
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(titleCommand, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@postid", x.postid);
+                        cmd.Parameters.AddWithValue("@wordid", x.wordid);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error setting word tables: " + ex.Message);
+                Console.ReadLine();
+            }
+            conn.Close();
+        }
+
     }
 
 

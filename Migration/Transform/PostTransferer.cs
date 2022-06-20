@@ -60,6 +60,8 @@ namespace SupportSiteETL.Migration.Transform
         {
             foreach(Q2APost p in allPosts)
                 loader.addPost(p);
+
+
         }
 
         //from a topic, look up all posts in that topic and generate the post lists
