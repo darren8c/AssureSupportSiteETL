@@ -13,17 +13,17 @@ using SupportSiteETL.Migration.Load;
 //testQ2ADeleteUsers();
 //testTransferUsers(); 
 //testTransferCategories();
-testWordTables();
-//testQ2ADeleteData(); //delete all the entered site data
-//testTransferAll();
-
-Console.WriteLine("\nProgram done");
+//testWordTables();
+testQ2ADeleteData(); //delete all the entered site data
+testTransferAll();
 
 void testTransferAll() //transfer both users and posts
 {
+    Console.WriteLine("Migrating data...");
     Transferer transferer = new Transferer();
     transferer.Extract();
     transferer.Load();
+    Console.WriteLine("Data migrated!");
 }
 
 void testWordTables()
@@ -177,12 +177,19 @@ void testQ2ADeleteData() //deletes users, categories, and all posts
     Loader loader = new Loader();
     Deleter deleter = new Deleter();
 
+    Console.WriteLine("Deleting existing site data...");
+
     deleter.DeletePosts();
     Console.WriteLine("Posts Deleted!");
     deleter.DeleteCategories();
     Console.WriteLine("Categories Deleted!");
     deleter.DeleteUsers();
     Console.WriteLine("(non super-admin) Users Deleted!");
+
+    deleter.DeleteWordTables();
+    Console.WriteLine("Search table data Deleted!");
+
+    Console.WriteLine("Existing site data deleted!\n");
 
     loader.UpdateSiteStats();
 }

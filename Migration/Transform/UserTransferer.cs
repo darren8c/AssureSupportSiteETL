@@ -107,7 +107,7 @@ namespace SupportSiteETL.Migration.Transform
                 loader.addUser(user); //add each users piece of data
 
             loader.UpdateSiteStats(); //update user count so the site has the User count stat correct.
-
+            Console.WriteLine("Users Transfered!");
         }
 
 

@@ -60,13 +60,13 @@ namespace SupportSiteETL.Migration.Load
                 result = q2a.ExecuteUpdate(sql);
                 rowsAffected += result;
 
-                Console.WriteLine(string.Format("Deleted {0} rows from {1}", result, table));
+                //Console.WriteLine(string.Format("Deleted {0} rows from {1}", result, table));
             }
 
             // Separate query because the ID field is named different in this table
             string sharedevents = string.Format("DELETE FROM qa_sharedevents WHERE lastuserid <> {0};", superAdminId);
             result = q2a.ExecuteUpdate(sharedevents);
-            Console.WriteLine(string.Format("Deleted {0} rows from qa_sharedevents", result));
+            //Console.WriteLine(string.Format("Deleted {0} rows from qa_sharedevents", result));
 
             loader.UpdateSiteStats(); //update settings table
 

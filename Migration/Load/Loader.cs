@@ -160,7 +160,7 @@ namespace SupportSiteETL.Migration.Load
                     cmd.ExecuteNonQuery();
                 }
 
-                Console.WriteLine(string.Format("Inserted user with ID: {0} - {1}", user.userId, user.handle));
+                //Console.WriteLine(string.Format("Inserted user with ID: {0} - {1}", user.userId, user.handle));
             }
             catch (Exception ex)
             {
@@ -217,8 +217,7 @@ namespace SupportSiteETL.Migration.Load
             conn.Close();
         }
 
-        //add a new category to q2a
-
+        //add the user votes into qa_uservotes
         public void addUserVote(Q2APost post)
         {
             MySqlConnection conn = q2a.retrieveConnection();
@@ -249,6 +248,9 @@ namespace SupportSiteETL.Migration.Load
             }
             conn.Close();
         }
+
+        //add a new category to q2a
+
 
         public void addCategory(Q2ACategory cat)
         {

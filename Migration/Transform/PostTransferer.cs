@@ -40,6 +40,8 @@ namespace SupportSiteETL.Migration.Transform
         //a map for old cat id's to new is also needed
         public void Extract(Dictionary<int, int> o2nId, Dictionary<int,int> o2nIdCat)
         {
+            Console.WriteLine("Extracting Topics...");
+
             oldToNewId = o2nId;
             oldToNewCatId = o2nIdCat;
 
@@ -53,18 +55,22 @@ namespace SupportSiteETL.Migration.Transform
                     continue;
                 
                 allPosts.AddRange( createPostsFromTopic(topic) );
-                Console.WriteLine("Topic " + topic["id"] + " extracted");
+                //Console.WriteLine("Topic " + topic["id"] + " extracted");
             }
+
+            Console.WriteLine("Topics Extracted!");
         }
 
         //save all the post data to the tables, includes, likes, tags, etc.
         public void Load()
         {
+            Console.WriteLine("Transfering Posts...");
             foreach(Q2APost p in allPosts)
             {
                 loader.addPost(p);
                 loader.addUserVote(p);
             }
+            Console.WriteLine("Posts Transfered!");
         }
 
         //from a topic, look up all posts in that topic and generate the post lists

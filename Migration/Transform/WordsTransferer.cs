@@ -103,7 +103,7 @@ namespace SupportSiteETL.Migration.Transform
             List<TitleWordsEntry> titleWords = new List<TitleWordsEntry>(); //for qa_titlewords
             List<ContentWordsEntry> contentWords = new List<ContentWordsEntry>(); //for qa_contentwords
 
-            Console.WriteLine("Gathering word table data...");
+            Console.WriteLine("Updating and Gathering word table data...");
 
             foreach (Post post in posts)
             {
@@ -118,7 +118,6 @@ namespace SupportSiteETL.Migration.Transform
 
 
             //now write to the tables
-            Console.WriteLine("Saving word tables to q2a... (this may take a while)");
             loader.AddToWordTables(words, contentWords, postTags, tagWords, titleWords);
             Console.WriteLine("Word tables updated!");
 
