@@ -94,6 +94,12 @@ namespace SupportSiteETL.Migration.Extract
         {
             return q2a.ExecuteQuery("SELECT * FROM qa_categories ORDER BY categoryid;");
         }
+
+        //all the posts on q2a
+        public List<Dictionary<string, string>> GetQ2APosts()
+        {
+            return q2a.ExecuteQuery("SELECT * FROM qa_posts ORDER BY postid");
+        }
     }
 
 }

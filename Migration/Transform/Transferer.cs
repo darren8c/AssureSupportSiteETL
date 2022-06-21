@@ -14,6 +14,7 @@ namespace SupportSiteETL.Migration.Transform
         UserTransferer ut;
         CategoryTransferer ct;
         PostTransferer pt;
+        WordsTransferer wt;
         Loader loader;
 
         public Transferer()
@@ -21,6 +22,7 @@ namespace SupportSiteETL.Migration.Transform
             ut = new UserTransferer();
             ct = new CategoryTransferer();
             pt = new PostTransferer();
+            wt = new WordsTransferer();
             loader = new Loader();
         }
 
@@ -33,11 +35,13 @@ namespace SupportSiteETL.Migration.Transform
 
         public void Load()
         {
-            ut.Load();
-            ct.Load();
-            pt.Load();
+            ut.Load(); //add the users to q2a
+            ct.Load(); //add categories to q2a
+            pt.Load(); //add posts to q2a
+
             ct.updateCategoryCounts(); //update the category count now that post data is loaded
-            loader.UpdateSiteStats();
+            wt.Load(); //update all the word tables
+            loader.UpdateSiteStats(); //update some key values in qa_stats
 
         }
     }
