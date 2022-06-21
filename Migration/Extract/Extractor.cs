@@ -39,6 +39,13 @@ namespace SupportSiteETL.Migration.Extract
             return dc.ExecuteQuery("SELECT * FROM public.posts where topic_id=" + topicId.ToString() + " ORDER BY post_number;");
         }
 
+        //get all the posts with a certain post and action id from post_actions
+        public List<Dictionary<string, string>> GetDiscoursePostsOnActions(int postId, int actionId)
+        {
+            return dc.ExecuteQuery("SELECT user_id, created_at, updated_at FROM public.post_actions where post_id=" + postId.ToString() 
+                                    + " AND post_action_type_id=" + actionId.ToString() + " ORDER BY id;");
+        }
+
         public uint GetQ2ALastPostId()
         {
             string getPostCountCommand = "SELECT COUNT(*) from qa_posts";
