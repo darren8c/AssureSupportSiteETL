@@ -13,9 +13,11 @@ namespace SupportSiteETL.Migration.Transform
 
     using Topic = Dictionary<string, string>;
     using Post = Dictionary<string, string>;
+    using VoteDetail = Dictionary<string, string>;
     public class PostTransferer
     {
         private Dictionary<int, int> oldToNewId; //contains mapping from discourse id to new id.
+        //private Dictionary<int, int> oldToNewPostId; //contains mapping from discourse post id to new id.
         private Dictionary<int, int> oldToNewCatId; //contains mapping from discourse category id to new category id.
 
         private uint currPostId = 0;
@@ -59,7 +61,10 @@ namespace SupportSiteETL.Migration.Transform
         public void Load()
         {
             foreach(Q2APost p in allPosts)
+            {
                 loader.addPost(p);
+                loader.addUserVote(p);
+            }
         }
 
         //from a topic, look up all posts in that topic and generate the post lists
@@ -73,8 +78,8 @@ namespace SupportSiteETL.Migration.Transform
                 Q2APost newPost = new Q2APost();
 
                 newPost.postid = currPostId;
-                currPostId++; //iterate id
-
+                //oldToNewPostId.Add(int.Parse(dcPost["id"]), (int) currPostId); //mapping from discourse post id to q2a post id
+                currPostId++; //iterate ids
                 //Set the fields of the post
                 if (dcPost["user_id"] != "") //not null user
                     newPost.userid = oldToNewId[int.Parse(dcPost["user_id"])];
@@ -87,8 +92,10 @@ namespace SupportSiteETL.Migration.Transform
 
                 newPost.views = int.Parse(dcPost["reads"]);
                 newPost.upvotes = int.Parse(dcPost["like_count"]);
-                newPost.netvotes = newPost.upvotes - newPost.downvotes; 
+                newPost.netvotes = newPost.upvotes - newPost.downvotes;
 
+                //populate the table of qa_uservotes for a specific post from discourse
+                newPost.votes = getVotesDetails(int.Parse(dcPost["id"]));
 
                 newPost.format = "html"; //keep everything in html
                 newPost.content = ParseContent(dcPost["cooked"]); //the html format of the post
@@ -158,6 +165,20 @@ namespace SupportSiteETL.Migration.Transform
                     s = s.Substring(0, i) + "\u2610" + s.Substring(i + 1, s.Length - (i + 1)); //swap char for block character █
 
             return s;
+        }
+
+        private Q2APost.UserVotes[] getVotesDetails(int postId)
+        {
+            List<VoteDetail> dcPostsActions = extractor.GetDiscoursePostsOnActions(postId, 2);
+            Q2APost.UserVotes[] voteDetails = new Q2APost.UserVotes[dcPostsActions.Count];
+            for (int i=0;i<dcPostsActions.Count;i++)
+            {
+                voteDetails[i] = new Q2APost.UserVotes();
+                voteDetails[i].userid = oldToNewId[int.Parse(dcPostsActions[i]["user_id"])];
+                voteDetails[i].votecreated = DateTime.Parse(dcPostsActions[i]["created_at"]);
+                voteDetails[i].voteupdated = DateTime.Parse(dcPostsActions[i]["updated_at"]);
+            }
+            return voteDetails;
         }
     }
 }

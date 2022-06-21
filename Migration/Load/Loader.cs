@@ -181,7 +181,7 @@ namespace SupportSiteETL.Migration.Load
             conn.Open();
             try
             {
-                using (MySqlCommand cmd = new MySqlCommand(addPostCommand, conn)) //to qa_users
+                using (MySqlCommand cmd = new MySqlCommand(addPostCommand, conn)) //to qa_posts
                 {
                     cmd.Parameters.AddWithValue("@postid", post.postid);
                     cmd.Parameters.AddWithValue("@type", post.type);
@@ -213,6 +213,38 @@ namespace SupportSiteETL.Migration.Load
             }
             conn.Close();
         }
+
+        public void addUserVote(Q2APost post)
+        {
+            MySqlConnection conn = q2a.retrieveConnection();
+            // Queries to uservotes
+            string addVotesCommand = "INSERT INTO qa_uservotes (postid, userid, vote, flag, votecreated, voteupdated) " +
+                "VALUES(@postid, @userid, @vote, @flag, @votecreated, @voteupdated)";
+            conn.Open();
+            try
+            {
+                foreach (Q2APost.UserVotes detail in post.votes)
+                {
+                    using (MySqlCommand cmd = new MySqlCommand(addVotesCommand, conn)) //to qa_uservotes
+                    {
+                        cmd.Parameters.AddWithValue("@postid", post.postid);
+                        cmd.Parameters.AddWithValue("@userid", detail.userid);
+                        cmd.Parameters.AddWithValue("@vote", detail.vote);
+                        cmd.Parameters.AddWithValue("@flag", detail.flag);
+                        cmd.Parameters.AddWithValue("@votecreated", detail.votecreated);
+                        cmd.Parameters.AddWithValue("@voteupdated", detail.voteupdated);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error adding new user_vote for a post: " + ex.Message);
+                Console.ReadLine();
+            }
+            conn.Close();
+        }
+
         public void addCategory(Q2ACategory cat)
         {
             MySqlConnection conn = q2a.retrieveConnection();
