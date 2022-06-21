@@ -23,6 +23,8 @@ namespace SupportSiteETL.Migration.Transform
         public Dictionary<int, string> discourseLookupTable;
         public Dictionary<int, int> oldToNewId; //go from discourse user_id to q2a userid.
 
+        public List<int> devUsers; //q2a ids of any user with above 0 level
+
         private Extractor extractor;
         private Loader loader;
         private AnonNameGen nameGen;
@@ -33,6 +35,8 @@ namespace SupportSiteETL.Migration.Transform
             nameGen = new AnonNameGen(); //generates the usernames, e.g. anon127443
 
             oldToNewId = new Dictionary<int, int>();
+
+            devUsers = new List<int>();
             
             //contains all the info for what level 4 users on discourse and what new role they have on Q2A
             discourseLookupTable = new Dictionary<int, string>();
@@ -89,6 +93,11 @@ namespace SupportSiteETL.Migration.Transform
             //this will be the first id the new user receives (i.e. if the q2a site had 3 users, the first discourse user is not id 4)
             int currId = lastId + 1;
 
+            //mark any dev users in the current list
+            foreach (User user in q2aCurrUsers)
+                if (int.Parse(user["level"]) > 0)
+                    devUsers.Add(int.Parse(user["userid"]));
+
             //for each of the discourse users, fill in the needed data
             List<User> discourseUsers = extractor.GetDiscourseUsers();
             foreach (User dUser in discourseUsers)
@@ -126,6 +135,8 @@ namespace SupportSiteETL.Migration.Transform
             newUser.level = 0; //default user
             if (discourseLookupTable.ContainsKey(dUserId)) //check for a mapping
                 newUser.level = getRoleMap(discourseLookupTable[dUserId]); //oldId -> newRole -> roleLevel#
+            if (newUser.level > 0) //mark any dev users
+                devUsers.Add(newUser.userId);
 
             newUser.flags = 0;
             newUser.wallposts = 0;

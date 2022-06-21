@@ -18,6 +18,8 @@ namespace SupportSiteETL.Migration.Transform.Models
         public int amaxvote; //the highest voted answer
         public int? userid; //userid of poster
 
+        public int? selchildid; //the id of the selected answer (null if no selected answer)
+
         public int flagcount;
 
         public int upvotes; //upvotes
@@ -51,6 +53,8 @@ namespace SupportSiteETL.Migration.Transform.Models
             acount = 0;
             amaxvote = 0;
             userid = 0;
+
+            selchildid = null;
 
             flagcount = 0;
 

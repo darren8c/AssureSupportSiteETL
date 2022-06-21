@@ -31,10 +31,14 @@ namespace SupportSiteETL.Migration.Load
         //cache_ccount # of comments
         public void UpdateSiteStats()
         {
-            UpdateStatHelper("SELECT COUNT(*) FROM qa_users", "cache_userpointscount"); //updates user count
-            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='Q'", "cache_qcount"); //updates question count
-            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='A'", "cache_acount"); //updates answer count
-            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='C'", "cache_ccount"); //updates comment count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_users", "cache_userpointscount"); //user count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='Q'", "cache_qcount"); //question count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='A'", "cache_acount"); //answer count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='C'", "cache_ccount"); //comment count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_tagwords", "cache_tagcount"); //the amount of tags on the site
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts where type='Q' and acount=0", "cache_unaqcount"); //unanswered question count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts where type='Q' and selchildid is null", "cache_unselqcount"); //no selected answer count
+            UpdateStatHelper("SELECT COUNT(*) FROM qa_posts where type='Q' and amaxvote=0", "cache_unupaqcount"); //unvoted answer count
         }
         //helps the updateSiteStats function, executes a scaler function and then saves the value into another field in qa_options
         //findCountCommand should return 1 value which will be stored into the content where title=titleName
@@ -210,7 +214,7 @@ namespace SupportSiteETL.Migration.Load
 
             // Queries to posts
             string addPostCommand = "INSERT INTO qa_posts (postid,  type,  parentid,  categoryid, catidpath1, acount, amaxvote, userid, " +
-                "upvotes, downvotes, netvotes, views, flagcount, format, created, updated, updatetype, title, content, notify) VALUES ";
+                "upvotes, downvotes, netvotes, views, flagcount, format, created, updated, updatetype, title, content, notify, selchildid) VALUES ";
             conn.Open();
             try
             {
@@ -222,14 +226,15 @@ namespace SupportSiteETL.Migration.Load
                     string finalCommand = addPostCommand;
                     //add (@wordid#, @word#, @titlecount#, @contentcount#, @tagwordcount#, @tagcount#)
                     //add (@postid#,  @type#,  @parentid#, @categoryid#, @catidpath1#, @acount#, @amaxvote#, @userid#, @upvotes#, @downvotes#,
-                    //@netvotes#, @views#, @flagcount#, @format#, @created#, @updated#, @updatetype#, @title#, @content#, @notify#)" per row
+                    //@netvotes#, @views#, @flagcount#, @format#, @created#, @updated#, @updatetype#, @title#, @content#, @notify#, @selchildid)" per row
                     for (int i = startIndex; i < endIndex; i++)
                     {
                         string sI = i.ToString(); //index as a string
                         finalCommand = finalCommand + "(" + "@postid" + sI + ", @type" + sI + ", @parentid" + sI + ", @categoryid" + sI +
                             ", @catidpath1" + sI + ", @acount" + sI + ", @amaxvote" + sI + ", @userid" + sI + ", @upvotes" + sI +
                             ", @downvotes" + sI + ", @netvotes" + sI + ", @views" + sI + ", @flagcount" + sI + ", @format" + sI +
-                            ", @created" + sI + ", @updated" + sI + ", @updatetype" + sI + ", @title" + sI + ", @content" + sI + ", @notify" + sI + "),";
+                            ", @created" + sI + ", @updated" + sI + ", @updatetype" + sI + ", @title" + sI + ", @content" + sI + 
+                            ", @notify" + sI + ", @selchildid" + sI + "),";
                     }
                     finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
                     using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
@@ -257,6 +262,7 @@ namespace SupportSiteETL.Migration.Load
                             cmd.Parameters.AddWithValue("@title" + sI, data[i].title);
                             cmd.Parameters.AddWithValue("@content" + sI, data[i].content);
                             cmd.Parameters.AddWithValue("@notify" + sI, data[i].notify);
+                            cmd.Parameters.AddWithValue("@selchildid" + sI, data[i].selchildid);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
                     }
@@ -319,9 +325,7 @@ namespace SupportSiteETL.Migration.Load
         }
 
         //add a new category to q2a
-
-
-        public void addCategory(Q2ACategory cat)
+        public void AddCategory(Q2ACategory cat)
         {
             MySqlConnection conn = q2a.retrieveConnection();
 

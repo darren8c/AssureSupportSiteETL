@@ -100,7 +100,7 @@ namespace SupportSiteETL.Migration.Transform
         public void Load()
         {
             foreach (Q2ACategory category in q2aCatsNew) //add each new category
-                loader.addCategory(category);
+                loader.AddCategory(category);
         }
 
         //update the qcount fields for each of the entries in q2a, assumes post data is already loaded on q2a

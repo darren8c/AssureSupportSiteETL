@@ -30,7 +30,7 @@ namespace SupportSiteETL.Migration.Transform
         {
             ut.Extract();
             ct.Extract();
-            pt.Extract(ut.oldToNewId, ct.catIdMap); //the post extraction requires the user id conversion dictionary
+            pt.Extract(ut.oldToNewId, ct.catIdMap, ut.devUsers); //the post extraction requires the user id conversion dictionary
         }
 
         public void Load()

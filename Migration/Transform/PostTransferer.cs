@@ -19,6 +19,8 @@ namespace SupportSiteETL.Migration.Transform
         private Dictionary<int, int> oldToNewId; //contains mapping from discourse id to new id.
         //private Dictionary<int, int> oldToNewPostId; //contains mapping from discourse post id to new id.
         private Dictionary<int, int> oldToNewCatId; //contains mapping from discourse category id to new category id.
+        
+        private List<int> devUserIds; //used for selecting answers, ids of all dev users
 
         private uint currPostId;
 
@@ -37,13 +39,14 @@ namespace SupportSiteETL.Migration.Transform
         }
 
         //extract the post data, to fill the fields we need the map of old id's to new id's which requires the user transferer
-        //a map for old cat id's to new is also needed
-        public void Extract(Dictionary<int, int> o2nId, Dictionary<int,int> o2nIdCat)
+        //a map for old cat id's to new is also needed, lastly devUser list is needed to select answers
+        public void Extract(Dictionary<int, int> o2nId, Dictionary<int,int> o2nIdCat, List<int> devUsers)
         {
             Console.WriteLine("Extracting topics and assembling posts...");
 
             oldToNewId = o2nId;
             oldToNewCatId = o2nIdCat;
+            devUserIds = devUsers;
 
             //retrieve all the topics, then for each topic create all the posts
             List<Topic> topics = extractor.GetDiscourseTopics();
@@ -85,79 +88,121 @@ namespace SupportSiteETL.Migration.Transform
             //all the posts on this thread
             List<Post> dcPosts = extractor.GetDiscoursePostsOnTopic(int.Parse(topic["id"]));
             Dictionary<int, Q2APost> replyIdMap = new Dictionary<int, Q2APost>(); //maps from the discourse post_number to the corresponding Q2APost.
-            foreach (var dcPost in dcPosts) //go through each post and gathter the proper ddata
+
+            foreach (Post dcPost in dcPosts) //go through each post and gathter the proper data
             {
                 Q2APost newPost = new Q2APost();
-
-                newPost.postid = currPostId;
-                //oldToNewPostId.Add(int.Parse(dcPost["id"]), (int) currPostId); //mapping from discourse post id to q2a post id
-                currPostId++; //iterate ids
-                //Set the fields of the post
-                if (dcPost["user_id"] != "") //not null user
-                    newPost.userid = oldToNewId[int.Parse(dcPost["user_id"])];
-                else //must be null user (deleted/banned), it will now show up as anonymous
-                    newPost.userid = null;
-
-                //uncomment if categories are being used
-                newPost.categoryid = oldToNewCatId[int.Parse(topic["category_id"])];
-                newPost.catidpath1 = newPost.categoryid;
-
-                newPost.views = int.Parse(dcPost["reads"]);
-                newPost.upvotes = int.Parse(dcPost["like_count"]);
-                newPost.netvotes = newPost.upvotes - newPost.downvotes;
-
-                //populate the table of qa_uservotes for a specific post from discourse
-                newPost.votes = getVotesDetails(int.Parse(dcPost["id"]), (int)newPost.postid);
-
-                newPost.format = "html"; //keep everything in html
-                newPost.content = ParseContent(dcPost["cooked"]); //the html format of the post
-
-                newPost.created = DateTime.Parse(dcPost["created_at"]);
-                if (dcPost["created_at"] == dcPost["updated_at"]) //there has never been an update if update time is the same
-                    newPost.updated = null;
-                else //different update time
-                {
-                    newPost.updated = DateTime.Parse(dcPost["updated_at"]);
-                    newPost.updateType = "H";
-                }
-
-                //Determine the type, and parent id, not for the sake of finding the parent, the posts are in post_number order
-                if (int.Parse(dcPost["post_number"]) == 1) //this must be a question as it is the first post
-                {
-                    newPost.title = topic["title"];
-                    newPost.type = "Q";
-                    newPost.parentid = null;
-                }
-                else //either an answer or a comment
-                {
-                    int replyNum = -1;
-                    if (dcPost["reply_to_post_number"] != "") //not null
-                        replyNum = int.Parse(dcPost["reply_to_post_number"]);
-                    if(replyNum == -1 || replyNum == 1) //not replying to anything or reply to question, assume answer
-                    {
-                        newPost.type = "A"; //answer
-                        newPost.parentid = (int)replyIdMap[1].postid; //parent is the original question id
-
-                        replyIdMap[1].acount++; //add one to the answer count of the question post.
-                        if (newPost.upvotes > replyIdMap[1].amaxvote) //check if this is a new maximum for the most up voted answer
-                            replyIdMap[1].amaxvote = newPost.upvotes;
-                    }
-                    else //must be a comment
-                    {
-                        newPost.type = "C"; //comment
-                        newPost.parentid = (int)replyIdMap[replyNum].postid;
-                    }
-                }
-
-                //check if the post should be hidden
-                if (bool.Parse(dcPost["hidden"]) || bool.Parse(dcPost["user_deleted"]))
-                    newPost.type += "_HIDDEN"; //add hidden to the type, i.e. C_HIDDEN
+                SetBasicPostAttributes(ref newPost, topic, dcPost); //set basic fields like id, category, title, etc.
+                SetAdvancedPostAttributes(ref newPost, topic, dcPost, ref replyIdMap); //set complicated fields like parent id and type
 
                 //all fields set, add to map
                 replyIdMap.Add(int.Parse(dcPost["post_number"]), newPost);
             }
 
-            return replyIdMap.Values.ToList();
+            List<Q2APost> newPosts = replyIdMap.Values.ToList();
+            SetAnswer(ref newPosts); //go through the posts and select a best answer if possible
+
+            return newPosts;
+        }
+
+        //from a set of posts on a question select a best answer if possible
+        //a post can be a selected answer if it is the last answer and the poster is a dev
+        private void SetAnswer(ref List<Q2APost> posts)
+        {
+            //find the last answer, find the main question, check if a valid answer (set it if so)
+            int lastAnswerIndex = -1; //index of the last answer given (by time)
+            DateTime lastTime = DateTime.UnixEpoch; //unix time, basically lowest value
+            for(int i = 0; i < posts.Count; i++) //find the last answer
+            {
+                if (posts[i].created > lastTime)
+                {
+                    lastAnswerIndex = i;
+                    lastTime = posts[i].created;
+                }
+            }
+
+            int mainPostIndex = -1; //find the index of the main question
+            for(int i = 0; mainPostIndex < posts.Count; i++)
+            {
+                if (posts[i].type[0] == 'Q') //the post is a question
+                {
+                    mainPostIndex = i;
+                    break;
+                }
+            }
+
+            if (devUserIds.Contains((int)posts[lastAnswerIndex].userid)) //a non basic user, either an editor, expert, ... etc.
+                posts[mainPostIndex].selchildid = (int)posts[lastAnswerIndex].postid; //set this as a selected answer
+        }
+
+        private void SetBasicPostAttributes(ref Q2APost newPost, Topic topic, Post dcPost)
+        {
+            //Set the fields of the post
+            newPost.postid = currPostId;
+            currPostId++; //iterate ids
+            
+            //user_id details
+            if (dcPost["user_id"] != "") //not null user
+                newPost.userid = oldToNewId[int.Parse(dcPost["user_id"])];
+            else //must be null user (deleted/banned), it will now show up as anonymous
+                newPost.userid = null;
+            //category details
+            newPost.categoryid = oldToNewCatId[int.Parse(topic["category_id"])];
+            newPost.catidpath1 = newPost.categoryid;
+            //point details
+            newPost.views = int.Parse(dcPost["reads"]);
+            newPost.upvotes = int.Parse(dcPost["like_count"]);
+            newPost.netvotes = newPost.upvotes - newPost.downvotes;
+            //populate the table of qa_uservotes for a specific post from discourse
+            newPost.votes = getVotesDetails(int.Parse(dcPost["id"]), (int)newPost.postid);
+
+            //get the processed content in html formatting
+            newPost.format = "html"; //keep everything in html
+            newPost.content = ParseContent(dcPost["cooked"]); //the html format of the post
+
+            newPost.created = DateTime.Parse(dcPost["created_at"]);
+            if (dcPost["created_at"] == dcPost["updated_at"]) //there has never been an update if update time is the same
+                newPost.updated = null;
+            else //different update time
+            {
+                newPost.updated = DateTime.Parse(dcPost["updated_at"]);
+                newPost.updateType = "H";
+            }
+        }
+
+        //handle all the complicated details of taking a post and adding it to the list
+        private void SetAdvancedPostAttributes(ref Q2APost newPost, Topic topic, Post dcPost, ref Dictionary<int, Q2APost> replyIdMap)
+        {
+            //Determine the type, and parent id, note for the sake of finding the parent, the posts are in post_number order
+            if (int.Parse(dcPost["post_number"]) == 1) //this must be a question as it is the first post
+            {
+                newPost.title = topic["title"];
+                newPost.type = "Q";
+                newPost.parentid = null;
+            }
+            else //either an answer or a comment
+            {
+                int replyNum = -1;
+                if (dcPost["reply_to_post_number"] != "") //not null
+                    replyNum = int.Parse(dcPost["reply_to_post_number"]);
+                if (replyNum == -1 || replyNum == 1) //not replying to anything or reply to question, assume answer
+                {
+                    newPost.type = "A"; //answer
+                    newPost.parentid = (int)replyIdMap[1].postid; //parent is the original question id
+
+                    replyIdMap[1].acount++; //add one to the answer count of the question post.
+                    if (newPost.upvotes > replyIdMap[1].amaxvote) //check if this is a new maximum for the most up voted answer
+                        replyIdMap[1].amaxvote = newPost.upvotes;
+                }
+                else //must be a comment
+                {
+                    newPost.type = "C"; //comment
+                    newPost.parentid = (int)replyIdMap[replyNum].postid;
+                }
+            }
+            //check if the post should be hidden
+            if (bool.Parse(dcPost["hidden"]) || bool.Parse(dcPost["user_deleted"]))
+                newPost.type += "_HIDDEN"; //add hidden to the type, i.e. C_HIDDEN
         }
 
         //q2a has some constraints that discourse didn't
