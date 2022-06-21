@@ -17,7 +17,7 @@ namespace SupportSiteETL.Migration.Transform
     using User = Dictionary<string, string>;
 
     //class that handles the necessary info from discourse and q2a and then can write to the q2a
-    public class UserTransferer
+    public class UserTransformer
     {
         public List<Q2AUser> newUsers;
         public Dictionary<int, string> discourseLookupTable;
@@ -27,7 +27,7 @@ namespace SupportSiteETL.Migration.Transform
         private Loader loader;
         private AnonNameGen nameGen;
 
-        public UserTransferer()
+        public UserTransformer()
         {
             newUsers = new List<Q2AUser>();
             nameGen = new AnonNameGen(); //generates the usernames, e.g. anon127443
@@ -103,13 +103,12 @@ namespace SupportSiteETL.Migration.Transform
         {
             Console.WriteLine("Transfering users...");
             //add all the user data over to the tables
-            foreach (var user in newUsers)
-                loader.addUser(user); //add each users piece of data
+            loader.AddUsers(newUsers); //add each users piece of data
 
             loader.UpdateSiteStats(); //update user count so the site has the User count stat correct.
             Console.WriteLine("Users Transfered!");
         }
-
+        
 
         //fill in the needed data from the databases for this user
         private Q2AUser gatherData(int userId, User dUser)

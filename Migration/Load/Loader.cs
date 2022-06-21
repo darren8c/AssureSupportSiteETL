@@ -92,152 +92,221 @@ namespace SupportSiteETL.Migration.Load
             }
         }
 
-        //add user data to all the different tables given user data
-        public void addUser(Q2AUser user)
-        {
-            MySqlConnection conn = q2a.retrieveConnection();
 
+
+        //add user data to all the different tables given user data, Use batch inserting for much faster write speed
+        //basically the commands look something like INSERT INTO table (column names) VALUES (row1), (row2) ... (rowBatchSize)
+        public void AddUsers(List<Q2AUser> data, int batchSize=300)
+        {
             // Queries to insert users
-            string sql4Users = "INSERT INTO qa_users (userid, created, createip, loggedin, loginip, email, handle, level, flags, wallposts) VALUES (@userid, @created, @createip, @loggedin, @loginip, @email, @handle, @level, @flags, @wallposts)";
-            string sql4Points = "Insert INTO qa_userpoints (userid, points, qposts, qupvotes, qvoteds, upvoteds) VALUES (@userid, @points, @qposts, @qupvotes, @qvoteds, @upvoteds)";
-            //the profile writing is actually 4 inserts
-            string sql4Profiles = "Insert INTO qa_userprofile (userid, title, content) VALUES (@userid, @title, @content)";
+            string userCommand = "INSERT INTO qa_users (userid, created, createip, loggedin, loginip, email, handle, level, flags, wallposts) VALUES ";
+            string pointCommand = "INSERT INTO qa_userpoints (userid, points, qposts, qupvotes, qvoteds, upvoteds) VALUES ";
+            //this is actually 4 rows per user
+            string profileCommand = "INSERT INTO qa_userprofile (userid, title, content) VALUES ";
 
-            conn.Open();
-            try
-            {
-                using (MySqlCommand cmd = new MySqlCommand(sql4Users, conn)) //to qa_users
-                {
-                    cmd.Parameters.AddWithValue("@userid", user.userId);
-                    cmd.Parameters.AddWithValue("@created", user.created_at);
-                    cmd.Parameters.AddWithValue("@createip", "");
-                    cmd.Parameters.AddWithValue("@loggedin", user.loggedin);
-                    cmd.Parameters.AddWithValue("@loginip", "");
-                    cmd.Parameters.AddWithValue("@email", user.email);
-                    cmd.Parameters.AddWithValue("@handle", user.handle);
-                    cmd.Parameters.AddWithValue("@level", user.level);
-                    cmd.Parameters.AddWithValue("@flags", user.flags);
-                    cmd.Parameters.AddWithValue("@wallposts", user.wallposts);
-                    cmd.ExecuteNonQuery();
-                }
-                using (MySqlCommand cmd = new MySqlCommand(sql4Points, conn)) //to qa_points
-                {
-                    cmd.Parameters.AddWithValue("@userid", user.userId);
-                    cmd.Parameters.AddWithValue("@qposts", user.qposts);
-                    cmd.Parameters.AddWithValue("@qupvotes", user.qupvotes);
-                    cmd.Parameters.AddWithValue("@qvoteds", user.qvoteds);
-                    cmd.Parameters.AddWithValue("@upvoteds", user.upvoteds);
-                    cmd.Parameters.AddWithValue("@points", user.points);
-                    cmd.ExecuteNonQuery();
-                }
-                //each of the profile writes
-                using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn)) //about
-                {
-                    cmd.Parameters.AddWithValue("@userid", user.userId);
-                    cmd.Parameters.AddWithValue("@title", "about");
-                    cmd.Parameters.AddWithValue("@content", user.about);
-                    cmd.ExecuteNonQuery();
-                }
-                using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn)) //location
-                {
-                    cmd.Parameters.AddWithValue("@userid", user.userId);
-                    cmd.Parameters.AddWithValue("@title", "location");
-                    cmd.Parameters.AddWithValue("@content", user.location);
-                    cmd.ExecuteNonQuery();
-                }
-                using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn)) //name
-                {
-                    cmd.Parameters.AddWithValue("@userid", user.userId);
-                    cmd.Parameters.AddWithValue("@title", "name");
-                    cmd.Parameters.AddWithValue("@content", user.name);
-                    cmd.ExecuteNonQuery();
-                }
-                using (MySqlCommand cmd = new MySqlCommand(sql4Profiles, conn)) //website
-                {
-                    cmd.Parameters.AddWithValue("@userid", user.userId);
-                    cmd.Parameters.AddWithValue("@title", "website");
-                    cmd.Parameters.AddWithValue("@content", user.website);
-                    cmd.ExecuteNonQuery();
-                }
-
-                //Console.WriteLine(string.Format("Inserted user with ID: {0} - {1}", user.userId, user.handle));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error adding new user: " + ex.Message);
-            }
-            conn.Close();
-        }
-
-
-        //add user data to all the different tables given user data
-        public void addPost(Q2APost post)
-        {
             MySqlConnection conn = q2a.retrieveConnection();
-
-            // Queries to posts
-            string addPostCommand = "INSERT INTO qa_posts (postid,  type,  parentid,  categoryid, catidpath1, acount, amaxvote, userid, " +
-                "upvotes, downvotes, netvotes, views, flagcount, format, created, updated, updatetype, title, content, notify) " +
-                "VALUES (@postid,  @type,  @parentid,  @categoryid, @catidpath1, @acount, @amaxvote, @userid, @upvotes, @downvotes, " +
-                "@netvotes, @views, @flagcount, @format, @created, @updated, @updatetype, @title, @content, @notify)";
-
             conn.Open();
             try
             {
-                using (MySqlCommand cmd = new MySqlCommand(addPostCommand, conn)) //to qa_posts
+                //execute the statement in batches, total statements to execute is words.Count / batchSize
+                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
                 {
-                    cmd.Parameters.AddWithValue("@postid", post.postid);
-                    cmd.Parameters.AddWithValue("@type", post.type);
-                    cmd.Parameters.AddWithValue("@parentid", post.parentid);
-                    cmd.Parameters.AddWithValue("@categoryid", post.categoryid);
-                    cmd.Parameters.AddWithValue("@catidpath1", post.catidpath1);
-                    cmd.Parameters.AddWithValue("@acount", post.acount);
-                    cmd.Parameters.AddWithValue("@amaxvote", post.amaxvote);
-                    cmd.Parameters.AddWithValue("@userid", post.userid);
-                    cmd.Parameters.AddWithValue("@upvotes", post.upvotes);
-                    cmd.Parameters.AddWithValue("@downvotes", post.downvotes);
-                    cmd.Parameters.AddWithValue("@netvotes", post.netvotes);
-                    cmd.Parameters.AddWithValue("@views", post.views);
-                    cmd.Parameters.AddWithValue("@flagcount", post.flagcount);
-                    cmd.Parameters.AddWithValue("@format", post.format);
-                    cmd.Parameters.AddWithValue("@created", post.created);
-                    cmd.Parameters.AddWithValue("@updated", post.updated);
-                    cmd.Parameters.AddWithValue("@updatetype", post.updateType);
-                    cmd.Parameters.AddWithValue("@title", post.title);
-                    cmd.Parameters.AddWithValue("@content", post.content);
-                    cmd.Parameters.AddWithValue("@notify", post.notify);
-                    cmd.ExecuteNonQuery();
+                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
+
+                    string userCommandF = userCommand;
+                    string pointCommandF = pointCommand;
+                    string profileCommandF = profileCommand;
+
+                    //add (@userid, @created, @createip, @loggedin, @loginip, @email, @handle, @level, @flags, @wallposts) to userCommand
+                    //add (@userid, @points, @qposts, @qupvotes, @qvoteds, @upvoteds) to pointCommand
+                    //add (@userid, @title, @content) to profileCommand (actually 4 entries) (user prefix A, B, C, D for each 4)
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        string sI = i.ToString(); //index as a string
+                        userCommandF = userCommandF + "(" + "@userid" + sI + ", @created" + sI + ", @createip" + sI + ", @loggedin" + sI +
+                            ", @loginip" + sI + ", @email" + sI + ", @handle" + sI + ", @level" + sI + ", @flags" + sI + ", @wallposts" + sI + "),";
+                        pointCommandF = pointCommandF + "(" + "@userid" + sI + ", @points" + sI + ", @qposts" + sI + ", @qupvotes" + sI +
+                            ", @qvoteds" + sI + ", @upvoteds" + sI + "),";
+                        profileCommandF = profileCommandF + "(" + "@useridA" + sI + ", @titleA" + sI + ", @contentA" + sI + "),";
+                        profileCommandF = profileCommandF + "(" + "@useridB" + sI + ", @titleB" + sI + ", @contentB" + sI + "),";
+                        profileCommandF = profileCommandF + "(" + "@useridC" + sI + ", @titleC" + sI + ", @contentC" + sI + "),";
+                        profileCommandF = profileCommandF + "(" + "@useridD" + sI + ", @titleD" + sI + ", @contentD" + sI + "),";
+                    }
+                    userCommandF = userCommandF.Remove(userCommandF.Length - 1); //remove the last comma
+                    pointCommandF = pointCommandF.Remove(pointCommandF.Length - 1); //remove the last comma
+                    profileCommandF = profileCommandF.Remove(profileCommandF.Length - 1); //remove the last comma
+                    //now fill in the data, and execute each command
+                    using (MySqlCommand cmd = new MySqlCommand(userCommandF, conn)) //to qa_users
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        {
+                            string sI = i.ToString(); //index as a string
+                            cmd.Parameters.AddWithValue("@userid" + sI, data[i].userId);
+                            cmd.Parameters.AddWithValue("@created" + sI, data[i].created_at);
+                            cmd.Parameters.AddWithValue("@createip" + sI, "");
+                            cmd.Parameters.AddWithValue("@loggedin" + sI, data[i].loggedin);
+                            cmd.Parameters.AddWithValue("@loginip" + sI, "");
+                            cmd.Parameters.AddWithValue("@email" + sI, data[i].email);
+                            cmd.Parameters.AddWithValue("@handle" + sI, data[i].handle);
+                            cmd.Parameters.AddWithValue("@level" + sI, data[i].level);
+                            cmd.Parameters.AddWithValue("@flags" + sI, data[i].flags);
+                            cmd.Parameters.AddWithValue("@wallposts" + sI, data[i].wallposts);
+                        }
+                        cmd.ExecuteNonQuery();
+                    }
+                    using (MySqlCommand cmd = new MySqlCommand(pointCommandF, conn)) //to qa_points
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        {
+                            string sI = i.ToString(); //index as a string
+                            cmd.Parameters.AddWithValue("@userid" + sI, data[i].userId);
+                            cmd.Parameters.AddWithValue("@qposts" + sI, data[i].qposts);
+                            cmd.Parameters.AddWithValue("@qupvotes" + sI, data[i].qupvotes);
+                            cmd.Parameters.AddWithValue("@qvoteds" + sI, data[i].qvoteds);
+                            cmd.Parameters.AddWithValue("@upvoteds" + sI, data[i].upvoteds);
+                            cmd.Parameters.AddWithValue("@points" + sI, data[i].points);
+                        }
+                        cmd.ExecuteNonQuery();
+                    }
+                    using (MySqlCommand cmd = new MySqlCommand(profileCommandF, conn)) //profile sections, 4 lines
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        {
+                            string sI = i.ToString(); //index as a string
+                            //about
+                            cmd.Parameters.AddWithValue("@useridA" + sI, data[i].userId);
+                            cmd.Parameters.AddWithValue("@titleA" + sI, "about");
+                            cmd.Parameters.AddWithValue("@contentA" + sI, data[i].about);
+                            //location
+                            cmd.Parameters.AddWithValue("@useridB" + sI, data[i].userId);
+                            cmd.Parameters.AddWithValue("@titleB" + sI, "loation");
+                            cmd.Parameters.AddWithValue("@contentB" + sI, data[i].location);
+                            //name
+                            cmd.Parameters.AddWithValue("@useridC" + sI, data[i].userId);
+                            cmd.Parameters.AddWithValue("@titleC" + sI, "name");
+                            cmd.Parameters.AddWithValue("@contentC" + sI, data[i].name);
+                            //website
+                            cmd.Parameters.AddWithValue("@useridD" + sI, data[i].userId);
+                            cmd.Parameters.AddWithValue("@titleD" + sI, "website");
+                            cmd.Parameters.AddWithValue("@contentD" + sI, data[i].website);
+                        }
+                        cmd.ExecuteNonQuery();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error adding new user: " + ex.Message);
+                Console.WriteLine("Error adding users: " + ex.Message);
                 Console.ReadLine();
             }
             conn.Close();
         }
 
-        //add the user votes into qa_uservotes
-        public void addUserVote(Q2APost post)
+        //add user data to all the different tables given user data, Use batch inserting for much faster write speed
+        //basically the commands look something like INSERT INTO table (column names) VALUES (row1), (row2) ... (rowBatchSize)
+        public void AddPosts(List<Q2APost> data, int batchSize=500)
         {
             MySqlConnection conn = q2a.retrieveConnection();
-            // Queries to uservotes
-            string addVotesCommand = "INSERT INTO qa_uservotes (postid, userid, vote, flag, votecreated, voteupdated) " +
-                "VALUES(@postid, @userid, @vote, @flag, @votecreated, @voteupdated)";
+
+            // Queries to posts
+            string addPostCommand = "INSERT INTO qa_posts (postid,  type,  parentid,  categoryid, catidpath1, acount, amaxvote, userid, " +
+                "upvotes, downvotes, netvotes, views, flagcount, format, created, updated, updatetype, title, content, notify) VALUES ";
             conn.Open();
             try
             {
-                foreach (Q2APost.UserVotes detail in post.votes)
+                //execute the statement in batches, total statements to execute is words.Count / batchSize
+                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
                 {
-                    using (MySqlCommand cmd = new MySqlCommand(addVotesCommand, conn)) //to qa_uservotes
+                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
+
+                    string finalCommand = addPostCommand;
+                    //add (@wordid#, @word#, @titlecount#, @contentcount#, @tagwordcount#, @tagcount#)
+                    //add (@postid#,  @type#,  @parentid#, @categoryid#, @catidpath1#, @acount#, @amaxvote#, @userid#, @upvotes#, @downvotes#,
+                    //@netvotes#, @views#, @flagcount#, @format#, @created#, @updated#, @updatetype#, @title#, @content#, @notify#)" per row
+                    for (int i = startIndex; i < endIndex; i++)
                     {
-                        cmd.Parameters.AddWithValue("@postid", post.postid);
-                        cmd.Parameters.AddWithValue("@userid", detail.userid);
-                        cmd.Parameters.AddWithValue("@vote", detail.vote);
-                        cmd.Parameters.AddWithValue("@flag", detail.flag);
-                        cmd.Parameters.AddWithValue("@votecreated", detail.votecreated);
-                        cmd.Parameters.AddWithValue("@voteupdated", detail.voteupdated);
-                        cmd.ExecuteNonQuery();
+                        string sI = i.ToString(); //index as a string
+                        finalCommand = finalCommand + "(" + "@postid" + sI + ", @type" + sI + ", @parentid" + sI + ", @categoryid" + sI +
+                            ", @catidpath1" + sI + ", @acount" + sI + ", @amaxvote" + sI + ", @userid" + sI + ", @upvotes" + sI +
+                            ", @downvotes" + sI + ", @netvotes" + sI + ", @views" + sI + ", @flagcount" + sI + ", @format" + sI +
+                            ", @created" + sI + ", @updated" + sI + ", @updatetype" + sI + ", @title" + sI + ", @content" + sI + ", @notify" + sI + "),";
+                    }
+                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the data of each entry
+                        {
+                            string sI = i.ToString(); //index as a string
+                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
+                            cmd.Parameters.AddWithValue("@type" + sI, data[i].type);
+                            cmd.Parameters.AddWithValue("@parentid" + sI, data[i].parentid);
+                            cmd.Parameters.AddWithValue("@categoryid" + sI, data[i].categoryid);
+                            cmd.Parameters.AddWithValue("@catidpath1" + sI, data[i].catidpath1);
+                            cmd.Parameters.AddWithValue("@acount" + sI, data[i].acount);
+                            cmd.Parameters.AddWithValue("@amaxvote" + sI, data[i].amaxvote);
+                            cmd.Parameters.AddWithValue("@userid" + sI, data[i].userid);
+                            cmd.Parameters.AddWithValue("@upvotes" + sI, data[i].upvotes);
+                            cmd.Parameters.AddWithValue("@downvotes" + sI, data[i].downvotes);
+                            cmd.Parameters.AddWithValue("@netvotes" + sI, data[i].netvotes);
+                            cmd.Parameters.AddWithValue("@views" + sI, data[i].views);
+                            cmd.Parameters.AddWithValue("@flagcount" + sI, data[i].flagcount);
+                            cmd.Parameters.AddWithValue("@format" + sI, data[i].format);
+                            cmd.Parameters.AddWithValue("@created" + sI, data[i].created);
+                            cmd.Parameters.AddWithValue("@updated" + sI, data[i].updated);
+                            cmd.Parameters.AddWithValue("@updatetype" + sI, data[i].updateType);
+                            cmd.Parameters.AddWithValue("@title" + sI, data[i].title);
+                            cmd.Parameters.AddWithValue("@content" + sI, data[i].content);
+                            cmd.Parameters.AddWithValue("@notify" + sI, data[i].notify);
+                        }
+                        cmd.ExecuteNonQuery(); //finally execute the command
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error adding posts: " + ex.Message);
+                Console.ReadLine();
+            }
+            conn.Close();
+        }
+
+        //add the user votes into qa_uservotes, Use batch inserting for much faster write speed
+        //basically the commands look something like INSERT INTO table (column names) VALUES (row1), (row2) ... (rowBatchSize)
+        public void AddUserVotes(List<UserVote> data, int batchSize=500)
+        {
+            // Queries to uservotes
+            string addVotesCommand = "INSERT INTO qa_uservotes (postid, userid, vote, flag, votecreated, voteupdated) VALUES ";
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                //execute the statement in batches, total statements to execute is words.Count / batchSize
+                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                {
+                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
+
+                    string finalCommand = addVotesCommand;
+                    //add (@postid, @userid, @vote, @flag, @votecreated, @voteupdated) in each row
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        string sI = i.ToString(); //index as a string
+                        finalCommand = finalCommand + "(" + "@postid" + sI + ", @userid" + sI + ", @vote" + sI + ", @flag" + sI +
+                            ", @votecreated" + sI + ", @voteupdated" + sI + "),";
+                    }
+                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the data of each entry
+                        {
+                            string sI = i.ToString(); //index as a string
+                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
+                            cmd.Parameters.AddWithValue("@userid" + sI, data[i].userid);
+                            cmd.Parameters.AddWithValue("@vote" + sI, data[i].vote);
+                            cmd.Parameters.AddWithValue("@flag" + sI, data[i].flag);
+                            cmd.Parameters.AddWithValue("@votecreated" + sI, data[i].votecreated);
+                            cmd.Parameters.AddWithValue("@voteupdated" + sI, data[i].voteupdated);
+                        }
+                        cmd.ExecuteNonQuery(); //finally execute the command
                     }
                 }
             }

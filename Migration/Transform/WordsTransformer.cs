@@ -67,7 +67,7 @@ namespace SupportSiteETL.Migration.Transform
     }
 
 
-    public class WordsTransferer
+    public class WordsTransformer
     {
         private Extractor extractor;
         private Loader loader;
@@ -78,7 +78,7 @@ namespace SupportSiteETL.Migration.Transform
 
         private List<Post> posts; //all the posts from q2a
 
-        public WordsTransferer()
+        public WordsTransformer()
         {
             extractor = new Extractor();
             loader = new Loader();

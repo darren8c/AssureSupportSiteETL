@@ -9,20 +9,20 @@ using SupportSiteETL.Migration.Load;
 namespace SupportSiteETL.Migration.Transform
 {
     //the top level transferer class, organizes the flow of info between the posttransferer and user transferer
-    public class Transferer
+    public class Transformer
     {
-        UserTransferer ut;
-        CategoryTransferer ct;
-        PostTransferer pt;
-        WordsTransferer wt;
+        UserTransformer ut;
+        CategoryTransformer ct;
+        PostTransformer pt;
+        WordsTransformer wt;
         Loader loader;
 
-        public Transferer()
+        public Transformer()
         {
-            ut = new UserTransferer();
-            ct = new CategoryTransferer();
-            pt = new PostTransferer();
-            wt = new WordsTransferer();
+            ut = new UserTransformer();
+            ct = new CategoryTransformer();
+            pt = new PostTransformer();
+            wt = new WordsTransformer();
             loader = new Loader();
         }
 

@@ -20,7 +20,7 @@ testTransferAll();
 void testTransferAll() //transfer both users and posts
 {
     Console.WriteLine("Migrating data...");
-    Transferer transferer = new Transferer();
+    Transformer transferer = new Transformer();
     transferer.Extract();
     transferer.Load();
     Console.WriteLine("Data migrated!");
@@ -28,20 +28,39 @@ void testTransferAll() //transfer both users and posts
 
 void testWordTables()
 {
-    WordsTransferer wt = new WordsTransferer();
+    WordsTransformer wt = new WordsTransformer();
     wt.Load();
+}
+
+void testQ2ADeleteData() //deletes users, categories, and all posts
+{
+    Loader loader = new Loader();
+    Deleter deleter = new Deleter();
+
+    Console.WriteLine("Deleting existing site data...");
+
+    deleter.DeletePosts(); //note this deletes word/search table data as well
+    Console.WriteLine("Posts Deleted!");
+    deleter.DeleteCategories();
+    Console.WriteLine("Categories Deleted!");
+    deleter.DeleteUsers();
+    Console.WriteLine("(non super-admin) Users Deleted!");
+
+    Console.WriteLine("Existing site data deleted!\n");
+
+    loader.UpdateSiteStats();
 }
 
 void testTransferCategories()
 {
-    CategoryTransferer cTran = new CategoryTransferer();
+    CategoryTransformer cTran = new CategoryTransformer();
     cTran.Extract();
     cTran.Load();
 }
 
 void testTransferUsers()
 {
-    UserTransferer ut = new UserTransferer();
+    UserTransformer ut = new UserTransformer();
     ut.Extract();
 
     //Testing to see if user data looks right
@@ -170,26 +189,4 @@ void testQ2ADeleteUsers()
     {
         Console.WriteLine("\t" + qUser["userid"] + ": " + qUser["handle"]);
     }
-}
-
-void testQ2ADeleteData() //deletes users, categories, and all posts
-{
-    Loader loader = new Loader();
-    Deleter deleter = new Deleter();
-
-    Console.WriteLine("Deleting existing site data...");
-
-    deleter.DeletePosts();
-    Console.WriteLine("Posts Deleted!");
-    deleter.DeleteCategories();
-    Console.WriteLine("Categories Deleted!");
-    deleter.DeleteUsers();
-    Console.WriteLine("(non super-admin) Users Deleted!");
-
-    deleter.DeleteWordTables();
-    Console.WriteLine("Search table data Deleted!");
-
-    Console.WriteLine("Existing site data deleted!\n");
-
-    loader.UpdateSiteStats();
 }

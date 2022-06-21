@@ -11,7 +11,7 @@ using SupportSiteETL.Migration.Load;
 namespace SupportSiteETL.Migration.Transform
 {
     using Category = Dictionary<string, string>;
-    public class CategoryTransferer
+    public class CategoryTransformer
     {
 
         private List<Q2ACategory> q2aCatsOld; //categories already on q2a
@@ -23,7 +23,7 @@ namespace SupportSiteETL.Migration.Transform
         public Dictionary<int, int> catIdMap; //maps discourse category id to q2a category id
         private Dictionary<int, Q2ACategory> oldCategoryMap; //maps old discourse categories id's to new one's on q2a
 
-        public CategoryTransferer()
+        public CategoryTransformer()
         {
             q2aCatsOld = new List<Q2ACategory>();
             q2aCatsNew = new List<Q2ACategory>();
@@ -54,7 +54,8 @@ namespace SupportSiteETL.Migration.Transform
 
             foreach(Q2ACategory newCat in oldCategoryMap.Values) //go through each category in our table, add them if they don't exist in q2a
             {
-                if (categoryExists(newCat)) //we're only concerned with distinct values
+                //we're only concerned with distinct values, Delete is a special name, anything that is under this category will not be transfered to q2a
+                if (categoryExists(newCat) || newCat.title=="Delete")
                     continue;
 
                 bool alreadyExists = false; //check if the category already exists in the q2a site
@@ -157,15 +158,20 @@ namespace SupportSiteETL.Migration.Transform
             {
                 int q2aId = -1;
                 string catTitle = oldCategoryMap[discId].title;
-                foreach (Q2ACategory category in allQ2ACats)
+                if (catTitle == "Delete") //special mapping, topics under delete will not be ported over, map to -1
+                    catIdMap.Add(discId, -1);
+                else
                 {
-                    if (category.title == catTitle) //match
+                    foreach (Q2ACategory category in allQ2ACats)
                     {
-                        q2aId = category.id;
-                        break;
+                        if (category.title == catTitle) //match
+                        {
+                            q2aId = category.id;
+                            break;
+                        }
                     }
+                    catIdMap.Add(discId, q2aId);
                 }
-                catIdMap.Add(discId, q2aId);
             }
         }
     }

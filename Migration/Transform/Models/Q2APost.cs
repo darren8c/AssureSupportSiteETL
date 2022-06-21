@@ -38,7 +38,7 @@ namespace SupportSiteETL.Migration.Transform.Models
         public string? updateType; //type of update, H is updated is non blank
 
         //for qa_uservotes
-        public UserVotes[] votes;
+        public UserVote[] votes;
 
         public Q2APost()
         {
@@ -70,23 +70,25 @@ namespace SupportSiteETL.Migration.Transform.Models
             updated = null;
             updateType = null;
         }
-        public class UserVotes
-        {
-            public int userid;
-            public int vote;
-            public int flag;
-            public DateTime votecreated;
-            public DateTime voteupdated;
-
-            public UserVotes() 
-            {
-                //give default values, most of these fields should be set elsewhere
-                userid = 1;
-                vote = 1;
-                flag = 0;
-                votecreated = DateTime.Now;
-                voteupdated = DateTime.Now;
-            }
-        }
     }   
+    public class UserVote
+    {
+        public int postid;
+        public int userid;
+        public int vote;
+        public int flag;
+        public DateTime votecreated;
+        public DateTime voteupdated;
+
+        public UserVote()
+        {
+            //give default values, most of these fields should be set elsewhere
+            postid = 0;
+            userid = 1;
+            vote = 1;
+            flag = 0;
+            votecreated = DateTime.Now;
+            voteupdated = DateTime.Now;
+        }
+    }
 }

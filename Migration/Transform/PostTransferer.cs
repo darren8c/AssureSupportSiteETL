@@ -14,20 +14,20 @@ namespace SupportSiteETL.Migration.Transform
     using Topic = Dictionary<string, string>;
     using Post = Dictionary<string, string>;
     using VoteDetail = Dictionary<string, string>;
-    public class PostTransferer
+    public class PostTransformer
     {
         private Dictionary<int, int> oldToNewId; //contains mapping from discourse id to new id.
         //private Dictionary<int, int> oldToNewPostId; //contains mapping from discourse post id to new id.
         private Dictionary<int, int> oldToNewCatId; //contains mapping from discourse category id to new category id.
 
-        private uint currPostId = 0;
+        private uint currPostId;
 
         private List<Q2APost> allPosts;
 
         Extractor extractor;
         Loader loader;
 
-        public PostTransferer()
+        public PostTransformer()
         {
             allPosts = new List<Q2APost>();
             extractor = new Extractor();
@@ -40,7 +40,7 @@ namespace SupportSiteETL.Migration.Transform
         //a map for old cat id's to new is also needed
         public void Extract(Dictionary<int, int> o2nId, Dictionary<int,int> o2nIdCat)
         {
-            Console.WriteLine("Extracting Topics...");
+            Console.WriteLine("Extracting topics and assembling posts...");
 
             oldToNewId = o2nId;
             oldToNewCatId = o2nIdCat;
@@ -53,23 +53,29 @@ namespace SupportSiteETL.Migration.Transform
             {
                 if (topic["archetype"] != "regular") //all other types are private messages and shouldn't be transferred
                     continue;
-                
+                bool deleteCategory = (oldToNewCatId[int.Parse(topic["category_id"])] == -1);
+                if (deleteCategory) //if something belongs to "Delete" don't add to q2a
+                    continue;
+
                 allPosts.AddRange( createPostsFromTopic(topic) );
                 //Console.WriteLine("Topic " + topic["id"] + " extracted");
             }
 
-            Console.WriteLine("Topics Extracted!");
+            Console.WriteLine("Posts assembled!");
         }
 
         //save all the post data to the tables, includes, likes, tags, etc.
         public void Load()
         {
             Console.WriteLine("Transfering Posts...");
-            foreach(Q2APost p in allPosts)
-            {
-                loader.addPost(p);
-                loader.addUserVote(p);
-            }
+            
+            loader.AddPosts(allPosts);
+
+            List<UserVote> allVotes = new List<UserVote>(); //get the vote data from the posts in one list
+            foreach (Q2APost post in allPosts)
+                allVotes.AddRange(post.votes);
+            loader.AddUserVotes(allVotes);
+
             Console.WriteLine("Posts Transfered!");
         }
 
@@ -101,7 +107,7 @@ namespace SupportSiteETL.Migration.Transform
                 newPost.netvotes = newPost.upvotes - newPost.downvotes;
 
                 //populate the table of qa_uservotes for a specific post from discourse
-                newPost.votes = getVotesDetails(int.Parse(dcPost["id"]));
+                newPost.votes = getVotesDetails(int.Parse(dcPost["id"]), (int)newPost.postid);
 
                 newPost.format = "html"; //keep everything in html
                 newPost.content = ParseContent(dcPost["cooked"]); //the html format of the post
@@ -173,13 +179,14 @@ namespace SupportSiteETL.Migration.Transform
             return s;
         }
 
-        private Q2APost.UserVotes[] getVotesDetails(int postId)
+        private UserVote[] getVotesDetails(int postIdDisc, int postIdQ2A)
         {
-            List<VoteDetail> dcPostsActions = extractor.GetDiscoursePostsOnActions(postId, 2);
-            Q2APost.UserVotes[] voteDetails = new Q2APost.UserVotes[dcPostsActions.Count];
-            for (int i=0;i<dcPostsActions.Count;i++)
+            List<VoteDetail> dcPostsActions = extractor.GetDiscoursePostsOnActions(postIdDisc, 2);
+            UserVote[] voteDetails = new UserVote[dcPostsActions.Count];
+            for (int i = 0; i < dcPostsActions.Count; i++)
             {
-                voteDetails[i] = new Q2APost.UserVotes();
+                voteDetails[i] = new UserVote();
+                voteDetails[i].postid = postIdQ2A;
                 voteDetails[i].userid = oldToNewId[int.Parse(dcPostsActions[i]["user_id"])];
                 voteDetails[i].votecreated = DateTime.Parse(dcPostsActions[i]["created_at"]);
                 voteDetails[i].voteupdated = DateTime.Parse(dcPostsActions[i]["updated_at"]);
