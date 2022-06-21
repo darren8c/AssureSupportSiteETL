@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using SupportSiteETL.Databases;
 using MySql.Data.MySqlClient;
+using System.Data;
+
 using SupportSiteETL.Migration.Transform.Models;
 using SupportSiteETL.Migration.Transform;
 
@@ -248,89 +250,223 @@ namespace SupportSiteETL.Migration.Load
             conn.Close();
         }
 
+
         //set the word tables so searching works properly
         public void AddToWordTables(List<WordEntry> word, List<ContentWordsEntry> content, List<PostTagsEntry> post, List<TagWordsEntry> tag, List<TagWordsEntry> title)
         {
+            AddWordTable(word, 500); //500 rows at a time
+            AddContentTable(content, 500);
+            AddPostTagTable(post, 500);
+            AddTagTable(tag, 500);
+            AddTitleTable(title, 500);
+        }
+        //functions to help AddToWordTables()
+        //add many rows for every insert statement, basically by having INSERT INTO qa_words (columns) VALUES (row1), (row2), ...
+        private void AddWordTable(List<WordEntry> data, int batchSize=500)
+        {
             MySqlConnection conn = q2a.retrieveConnection();
-
-            //command to add a new category
-            string wordsCommand = "INSERT INTO qa_words (wordid, word, titlecount, contentcount, tagwordcount, tagcount) " +
-                "VALUES (@wordid, @word, @titlecount, @contentcount, @tagwordcount, @tagcount)";
-            string contentCommand = "INSERT INTO qa_contentwords (postid, wordid, count, type, questionid) " +
-                "VALUES (@postid, @wordid, @count, @type, @questionid)";
-            string posttagsCommand = "INSERT INTO qa_posttags (postid, wordid, postcreated) " +
-                "VALUES (@postid, @wordid, @postcreated)";
-            string tagCommand = "INSERT INTO qa_tagwords (postid, wordid) " +
-                "VALUES (@postid, @wordid)";
-            string titleCommand = "INSERT INTO qa_titlewords (postid, wordid) " +
-                "VALUES (@postid, @wordid)";
-
             conn.Open();
+            string wordsCommand = "INSERT INTO qa_words (wordid, word, titlecount, contentcount, tagwordcount, tagcount) VALUES ";
             try
             {
-                foreach(var x in word) //qa_words
+                //execute the statement in batches, total statements to execute is words.Count / batchSize
+                for(int startIndex = 0; startIndex < data.Count; startIndex=startIndex+batchSize)
                 {
-                    using (MySqlCommand cmd = new MySqlCommand(wordsCommand, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@wordid", x.wordid);
-                        cmd.Parameters.AddWithValue("@word", x.word);
-                        cmd.Parameters.AddWithValue("@titlecount", x.titlecount);
-                        cmd.Parameters.AddWithValue("@contentcount", x.contentcount);
-                        cmd.Parameters.AddWithValue("@tagwordcount", x.tagwordcount);
-                        cmd.Parameters.AddWithValue("@tagcount", x.tagcount);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-                foreach (var x in content) //qa_contentwords
-                {
-                    using (MySqlCommand cmd = new MySqlCommand(contentCommand, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@postid", x.postid);
-                        cmd.Parameters.AddWithValue("@wordid", x.wordid);
-                        cmd.Parameters.AddWithValue("@count", x.count);
-                        cmd.Parameters.AddWithValue("@type", x.type);
-                        cmd.Parameters.AddWithValue("@questionid", x.questionid);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-                foreach (var x in post) //qa_posttags
-                {
-                    using (MySqlCommand cmd = new MySqlCommand(posttagsCommand, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@postid", x.postid);
-                        cmd.Parameters.AddWithValue("@wordid", x.wordid);
-                        cmd.Parameters.AddWithValue("@postcreated", x.postcreated);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-                foreach (var x in tag) //qa_tagwords
-                {
-                    using (MySqlCommand cmd = new MySqlCommand(tagCommand, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@postid", x.postid);
-                        cmd.Parameters.AddWithValue("@wordid", x.postid);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-                foreach (var x in title) //qa_titlewords
-                {
-                    using (MySqlCommand cmd = new MySqlCommand(titleCommand, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@postid", x.postid);
-                        cmd.Parameters.AddWithValue("@wordid", x.wordid);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
+                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
 
+                    string finalCommand = wordsCommand;
+                    //add (@wordid#, @word#, @titlecount#, @contentcount#, @tagwordcount#, @tagcount#)
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        string sI = i.ToString(); //index as a string
+                        finalCommand = finalCommand + "(@wordid" + sI + ", @word" + sI + ", @titlecount" + sI + ", @contentcount" + sI + 
+                            ", @tagwordcount" + sI + ", @tagcount" + sI + "),";
+                    }
+                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        {
+                            string sI = i.ToString(); //index as a string
+                            cmd.Parameters.AddWithValue("@wordid" + sI,         data[i].wordid);
+                            cmd.Parameters.AddWithValue("@word" + sI,           data[i].word);
+                            cmd.Parameters.AddWithValue("@titlecount" + sI,     data[i].titlecount);
+                            cmd.Parameters.AddWithValue("@contentcount" + sI,   data[i].contentcount);
+                            cmd.Parameters.AddWithValue("@tagwordcount" + sI,   data[i].tagwordcount);
+                            cmd.Parameters.AddWithValue("@tagcount" + sI,       data[i].tagcount);
+                        }
+                        cmd.ExecuteNonQuery(); //finally execute the command
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error setting word tables: " + ex.Message);
+                Console.WriteLine("Error setting word table: " + ex.Message);
                 Console.ReadLine();
             }
             conn.Close();
         }
+        private void AddTagTable(List<TagWordsEntry> data, int batchSize = 500)
+        {
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            string wordsCommand = "INSERT INTO qa_tagwords (postid, wordid) VALUES ";
+            try
+            {
+                //execute the statement in batches, total statements to execute is words.Count / batchSize
+                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                {
+                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
 
+                    string finalCommand = wordsCommand;
+                    //add (@postid#, wordid#)
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        string sI = i.ToString(); //index as a string
+                        finalCommand = finalCommand + "(@postid" + sI + ", @wordid" + sI + "),";
+                    }
+                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        {
+                            string sI = i.ToString(); //index as a string
+                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
+                            cmd.Parameters.AddWithValue("@wordid" + sI, data[i].wordid);
+                        }
+                        cmd.ExecuteNonQuery(); //finally execute the command
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error setting tag table: " + ex.Message);
+                Console.ReadLine();
+            }
+            conn.Close();
+        }
+        private void AddPostTagTable(List<PostTagsEntry> data, int batchSize = 500)
+        {
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            string wordsCommand = "INSERT INTO qa_posttags (postid, wordid, postcreated) VALUES ";
+            try
+            {
+                //execute the statement in batches, total statements to execute is words.Count / batchSize
+                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                {
+                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
+
+                    string finalCommand = wordsCommand;
+                    //add (@postid#, @wordid#, @postcreated#)
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        string sI = i.ToString(); //index as a string
+                        finalCommand = finalCommand + "(@postid" + sI + ", @wordid" + sI + ", @postcreated" + sI + "),";
+                    }
+                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        {
+                            string sI = i.ToString(); //index as a string
+                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
+                            cmd.Parameters.AddWithValue("@wordid" + sI, data[i].wordid);
+                            cmd.Parameters.AddWithValue("@postcreated" + sI, data[i].postcreated);
+                        }
+                        cmd.ExecuteNonQuery(); //finally execute the command
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error setting PostTags table: " + ex.Message);
+                Console.ReadLine();
+            }
+            conn.Close();
+        }
+        private void AddContentTable(List<ContentWordsEntry> data, int batchSize = 500)
+        {
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            string wordsCommand = "INSERT INTO qa_contentwords (postid, wordid, count, type, questionid) VALUES ";
+            try
+            {
+                //execute the statement in batches, total statements to execute is words.Count / batchSize
+                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                {
+                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
+
+                    string finalCommand = wordsCommand;
+                    //add (@postid#, @wordid#, @count#, @type#, @questionid#)
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        string sI = i.ToString(); //index as a string
+                        finalCommand = finalCommand + "(@postid" + sI + ", @wordid" + sI + ", @count" + sI + ", @type" + sI +
+                            ", @questionid" + sI + "),";
+                    }
+                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        {
+                            string sI = i.ToString(); //index as a string
+                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
+                            cmd.Parameters.AddWithValue("@wordid" + sI, data[i].wordid);
+                            cmd.Parameters.AddWithValue("@count" + sI, data[i].count);
+                            cmd.Parameters.AddWithValue("@type" + sI, data[i].type);
+                            cmd.Parameters.AddWithValue("@questionid" + sI, data[i].questionid);
+                        }
+                        cmd.ExecuteNonQuery(); //finally execute the command
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error setting content table: " + ex.Message);
+                Console.ReadLine();
+            }
+            conn.Close();
+        }
+        private void AddTitleTable(List<TagWordsEntry> data, int batchSize = 500)
+        {
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            string wordsCommand = "INSERT INTO qa_titlewords (postid, wordid) VALUES ";
+            try
+            {
+                //execute the statement in batches, total statements to execute is words.Count / batchSize
+                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                {
+                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
+
+                    string finalCommand = wordsCommand;
+                    //add (@postid#, wordid#)
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        string sI = i.ToString(); //index as a string
+                        finalCommand = finalCommand + "(@postid" + sI + ", @wordid" + sI + "),";
+                    }
+                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    {
+                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        {
+                            string sI = i.ToString(); //index as a string
+                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
+                            cmd.Parameters.AddWithValue("@wordid" + sI, data[i].wordid);
+                        }
+                        cmd.ExecuteNonQuery(); //finally execute the command
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error setting title table: " + ex.Message);
+                Console.ReadLine();
+            }
+            conn.Close();
+        }
     }
 
 
