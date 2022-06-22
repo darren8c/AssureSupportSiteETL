@@ -109,18 +109,8 @@ namespace SupportSiteETL.Migration.Transform
         //a post can be a selected answer if it is the last answer and the poster is a dev
         private void SetAnswer(ref List<Q2APost> posts)
         {
-            //find the last answer, find the main question, check if a valid answer (set it if so)
-            int lastAnswerIndex = -1; //index of the last answer given (by time)
-            DateTime lastTime = DateTime.UnixEpoch; //unix time, basically lowest value
-            for(int i = 0; i < posts.Count; i++) //find the last answer
-            {
-                if (posts[i].created > lastTime)
-                {
-                    lastAnswerIndex = i;
-                    lastTime = posts[i].created;
-                }
-            }
 
+            //find the last answer, find the main question, check if a valid answer (set it if so)
             int mainPostIndex = -1; //find the index of the main question
             for(int i = 0; mainPostIndex < posts.Count; i++)
             {
@@ -131,7 +121,18 @@ namespace SupportSiteETL.Migration.Transform
                 }
             }
 
-            if (devUserIds.Contains((int)posts[lastAnswerIndex].userid)) //a non basic user, either an editor, expert, ... etc.
+            int lastAnswerIndex = -1; //index of the last answer given (by time)
+            DateTime lastTime = DateTime.UnixEpoch; //unix time, basically lowest value
+            for(int i = 0; i < posts.Count; i++) //find the last answer
+            {
+                if (posts[i].type[0] == 'A' && posts[i].created > lastTime) //if an answer and more recent
+                {
+                    lastAnswerIndex = i;
+                    lastTime = posts[i].created;
+                }
+            }
+
+            if (lastAnswerIndex != -1 && devUserIds.Contains((int)posts[lastAnswerIndex].userid)) //a non basic user, either an editor, expert, ... etc.
                 posts[mainPostIndex].selchildid = (int)posts[lastAnswerIndex].postid; //set this as a selected answer
         }
 
