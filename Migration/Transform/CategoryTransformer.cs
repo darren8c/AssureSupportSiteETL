@@ -42,7 +42,7 @@ namespace SupportSiteETL.Migration.Transform
             List<Category> q2aCurrCats = extractor.GetQ2ACategories(); //the categories that exists on q2a currently
             int currPosition = 0; //current category position
             int currId = 0; //current categoryid
-            foreach(Category c in q2aCurrCats) //find the currPosition and currId, needed for adding any new categories
+            foreach (Category c in q2aCurrCats) //find the currPosition and currId, needed for adding any new categories
             {
                 if (int.Parse(c["categoryid"]) > currId) //new max
                     currId = int.Parse(c["categoryid"]);
@@ -162,14 +162,7 @@ namespace SupportSiteETL.Migration.Transform
                     catIdMap.Add(discId, -1);
                 else
                 {
-                    foreach (Q2ACategory category in allQ2ACats)
-                    {
-                        if (category.title == catTitle) //match
-                        {
-                            q2aId = category.id;
-                            break;
-                        }
-                    }
+                    q2aId = allQ2ACats.First(c => c.title == catTitle).id; //find the corresonding id in the q2a categories
                     catIdMap.Add(discId, q2aId);
                 }
             }

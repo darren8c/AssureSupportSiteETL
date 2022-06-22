@@ -93,10 +93,8 @@ namespace SupportSiteETL.Migration.Transform
             //this will be the first id the new user receives (i.e. if the q2a site had 3 users, the first discourse user is not id 4)
             int currId = lastId + 1;
 
-            //mark any dev users in the current list
-            foreach (User user in q2aCurrUsers)
-                if (int.Parse(user["level"]) > 0)
-                    devUsers.Add(int.Parse(user["userid"]));
+            //mark any dev users in the current list, basically add any userids of and non basic user
+            devUsers.AddRange(q2aCurrUsers.FindAll(u => int.Parse(u["level"]) != 0).Select(u => int.Parse(u["userid"])));
 
             //for each of the discourse users, fill in the needed data
             List<User> discourseUsers = extractor.GetDiscourseUsers();

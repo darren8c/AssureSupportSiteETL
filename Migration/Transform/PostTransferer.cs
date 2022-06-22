@@ -111,15 +111,8 @@ namespace SupportSiteETL.Migration.Transform
         {
 
             //find the last answer, find the main question, check if a valid answer (set it if so)
-            int mainPostIndex = -1; //find the index of the main question
-            for(int i = 0; mainPostIndex < posts.Count; i++)
-            {
-                if (posts[i].type[0] == 'Q') //the post is a question
-                {
-                    mainPostIndex = i;
-                    break;
-                }
-            }
+            //find the index of the main question, all topics have 1 question first will always find an object
+            int mainPostIndex = posts.IndexOf(posts.First(p => p.type[0] == 'Q'));
 
             int lastAnswerIndex = -1; //index of the last answer given (by time)
             DateTime lastTime = DateTime.UnixEpoch; //unix time, basically lowest value
@@ -215,7 +208,6 @@ namespace SupportSiteETL.Migration.Transform
             string s = orig;
             if (s.Length >= 12000) //q2a doesn't permit this field to have over 12000 chars
                 s = s.Substring(0, 11500); //cutoff a bit earlier just in case
-
             
             //basically if a char is stored in the string using surrogates, it is too long to be displayed in q2a
             for (int i = 0; i < s.Length; i++) //this may be slow, look into a faster way to switch out chars that decode to more than 3 

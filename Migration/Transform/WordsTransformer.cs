@@ -115,8 +115,6 @@ namespace SupportSiteETL.Migration.Transform
             }
             List<WordEntry> words = wordDataMap.Values.ToList();
 
-
-
             //now write to the tables
             loader.AddToWordTables(words, contentWords, postTags, tagWords, titleWords);
             Console.WriteLine("Word tables updated!");
@@ -259,7 +257,7 @@ namespace SupportSiteETL.Migration.Transform
 
                 ContentWordsEntry word = new ContentWordsEntry();
                 word.postid = postid;
-                word.count = CountElement(wordName, wordNamesList);
+                word.count = wordNamesList.Count(w => w == wordName); //how many times the word is in the list
                 word.type = type;
                 word.questionid = questionid;
                 if (wordMap.ContainsKey(wordName)) //word is already known
@@ -313,17 +311,6 @@ namespace SupportSiteETL.Migration.Transform
         private string StripHTML(string html)
         {
             return Regex.Replace(html, "<.*?>", ""); //replace any tags with spaces
-        }
-
-
-        //count how many times an element appears in a list
-        private int CountElement(string x, List<string> A)
-        {
-            int count = 0;
-            for (int i = 0; i < A.Count; i++)
-                if (A[i] == x)
-                    count++;
-            return count;
         }
 
         //return the parent question id of a post
