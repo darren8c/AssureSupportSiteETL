@@ -65,6 +65,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error adding user count data: " + ex.Message);
+                throw;
             }
         }
 
@@ -93,6 +94,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error adding user count data: " + ex.Message);
+                throw;
             }
         }
 
@@ -113,86 +115,87 @@ namespace SupportSiteETL.Migration.Load
             try
             {
                 //execute the statement in batches, total statements to execute is words.Count / batchSize
-                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
                 {
-                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
-
-                    string userCommandF = userCommand;
-                    string pointCommandF = pointCommand;
-                    string profileCommandF = profileCommand;
-
                     //add (@userid, @created, @createip, @loggedin, @loginip, @email, @handle, @level, @flags, @wallposts) to userCommand
                     //add (@userid, @points, @qposts, @qupvotes, @qvoteds, @upvoteds) to pointCommand
                     //add (@userid, @title, @content) to profileCommand (actually 4 entries) (user prefix A, B, C, D for each 4)
-                    for (int i = startIndex; i < endIndex; i++)
+                    StringBuilder userCommandF = new StringBuilder(userCommand);
+                    StringBuilder pointCommandF = new StringBuilder(pointCommand);
+                    StringBuilder profileCommandF = new StringBuilder(profileCommand);
+
+                    var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
+                    foreach(var entry in currentBatch) //create insert commands
                     {
-                        string sI = i.ToString(); //index as a string
-                        userCommandF = userCommandF + "(" + "@userid" + sI + ", @created" + sI + ", @createip" + sI + ", @loggedin" + sI +
-                            ", @loginip" + sI + ", @email" + sI + ", @handle" + sI + ", @level" + sI + ", @flags" + sI + ", @wallposts" + sI + "),";
-                        pointCommandF = pointCommandF + "(" + "@userid" + sI + ", @points" + sI + ", @qposts" + sI + ", @qupvotes" + sI +
-                            ", @qvoteds" + sI + ", @upvoteds" + sI + "),";
-                        profileCommandF = profileCommandF + "(" + "@useridA" + sI + ", @titleA" + sI + ", @contentA" + sI + "),";
-                        profileCommandF = profileCommandF + "(" + "@useridB" + sI + ", @titleB" + sI + ", @contentB" + sI + "),";
-                        profileCommandF = profileCommandF + "(" + "@useridC" + sI + ", @titleC" + sI + ", @contentC" + sI + "),";
-                        profileCommandF = profileCommandF + "(" + "@useridD" + sI + ", @titleD" + sI + ", @contentD" + sI + "),";
+                        string id = entry.userId.ToString(); //appended to each parameter (id is unique for every entry)
+
+                        userCommandF.Append($"(@userid{id}, @created{id}, @createip{id}, @loggedin{id}, @loginip{id}, @email{id}, @handle{id}, " +
+                                            $"@level{id}, @flags{id}, @wallposts{id}),");
+                        pointCommandF.Append($"(@userid{id}, @points{id}, @qposts{id}, @qupvotes{id}, @qvoteds{id}, @upvoteds{id}),");
+                        
+                        profileCommandF.Append($"(@useridA{id}, @titleA{id}, @contentA{id}),");
+                        profileCommandF.Append($"(@useridB{id}, @titleB{id}, @contentB{id}),");
+                        profileCommandF.Append($"(@useridC{id}, @titleC{id}, @contentC{id}),");
+                        profileCommandF.Append($"(@useridD{id}, @titleD{id}, @contentD{id}),");
                     }
-                    userCommandF = userCommandF.Remove(userCommandF.Length - 1); //remove the last comma
-                    pointCommandF = pointCommandF.Remove(pointCommandF.Length - 1); //remove the last comma
-                    profileCommandF = profileCommandF.Remove(profileCommandF.Length - 1); //remove the last comma
-                    //now fill in the data, and execute each command
-                    using (MySqlCommand cmd = new MySqlCommand(userCommandF, conn)) //to qa_users
+                    userCommandF.Length--; //remove the last comma
+                    profileCommandF.Length--;
+                    pointCommandF.Length--;
+
+                    //fill in entries 
+                    using (MySqlCommand cmd = new MySqlCommand(userCommandF.ToString(), conn)) //to qa_users
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        foreach (var entry in currentBatch) //fill in the entries
                         {
-                            string sI = i.ToString(); //index as a string
-                            cmd.Parameters.AddWithValue("@userid" + sI, data[i].userId);
-                            cmd.Parameters.AddWithValue("@created" + sI, data[i].created_at);
-                            cmd.Parameters.AddWithValue("@createip" + sI, "");
-                            cmd.Parameters.AddWithValue("@loggedin" + sI, data[i].loggedin);
-                            cmd.Parameters.AddWithValue("@loginip" + sI, "");
-                            cmd.Parameters.AddWithValue("@email" + sI, data[i].email);
-                            cmd.Parameters.AddWithValue("@handle" + sI, data[i].handle);
-                            cmd.Parameters.AddWithValue("@level" + sI, data[i].level);
-                            cmd.Parameters.AddWithValue("@flags" + sI, data[i].flags);
-                            cmd.Parameters.AddWithValue("@wallposts" + sI, data[i].wallposts);
+                            string id = entry.userId.ToString(); //appended to each parameter (id is unique for every entry)
+                            cmd.Parameters.AddWithValue($"@userid{id}",     entry.userId);
+                            cmd.Parameters.AddWithValue($"@created{id}",    entry.created_at);
+                            cmd.Parameters.AddWithValue($"@createip{id}",   "");
+                            cmd.Parameters.AddWithValue($"@loggedin{id}",   entry.loggedin);
+                            cmd.Parameters.AddWithValue($"@loginip{id}",    "");
+                            cmd.Parameters.AddWithValue($"@email{id}",      entry.email);
+                            cmd.Parameters.AddWithValue($"@handle{id}",     entry.handle);
+                            cmd.Parameters.AddWithValue($"@level{id}",      entry.level);
+                            cmd.Parameters.AddWithValue($"@flags{id}",      entry.flags);
+                            cmd.Parameters.AddWithValue($"@wallposts{id}",  entry.wallposts);
                         }
                         cmd.ExecuteNonQuery();
                     }
-                    using (MySqlCommand cmd = new MySqlCommand(pointCommandF, conn)) //to qa_points
+                    using (MySqlCommand cmd = new MySqlCommand(pointCommandF.ToString(), conn)) //to qa_points
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        foreach (var entry in currentBatch) //fill in the entries
                         {
-                            string sI = i.ToString(); //index as a string
-                            cmd.Parameters.AddWithValue("@userid" + sI, data[i].userId);
-                            cmd.Parameters.AddWithValue("@qposts" + sI, data[i].qposts);
-                            cmd.Parameters.AddWithValue("@qupvotes" + sI, data[i].qupvotes);
-                            cmd.Parameters.AddWithValue("@qvoteds" + sI, data[i].qvoteds);
-                            cmd.Parameters.AddWithValue("@upvoteds" + sI, data[i].upvoteds);
-                            cmd.Parameters.AddWithValue("@points" + sI, data[i].points);
+                            string id = entry.userId.ToString(); //appended to each parameter (id is unique for every entry)
+                            cmd.Parameters.AddWithValue($"@userid{id}",     entry.userId);
+                            cmd.Parameters.AddWithValue($"@qposts{id}",     entry.qposts);
+                            cmd.Parameters.AddWithValue($"@qupvotes{id}",   entry.qupvotes);
+                            cmd.Parameters.AddWithValue($"@qvoteds{id}",    entry.qvoteds);
+                            cmd.Parameters.AddWithValue($"@upvoteds{id}",   entry.upvoteds);
+                            cmd.Parameters.AddWithValue($"@points{id}",     entry.points);
                         }
                         cmd.ExecuteNonQuery();
                     }
-                    using (MySqlCommand cmd = new MySqlCommand(profileCommandF, conn)) //profile sections, 4 lines
+                    using (MySqlCommand cmd = new MySqlCommand(profileCommandF.ToString(), conn)) //profile sections, 4 lines
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        foreach (var entry in currentBatch) //fill in the entries
                         {
-                            string sI = i.ToString(); //index as a string
+                            string id = entry.userId.ToString(); //appended to each parameter (id is unique for every entry)
                             //about
-                            cmd.Parameters.AddWithValue("@useridA" + sI, data[i].userId);
-                            cmd.Parameters.AddWithValue("@titleA" + sI, "about");
-                            cmd.Parameters.AddWithValue("@contentA" + sI, data[i].about);
+                            cmd.Parameters.AddWithValue($"@useridA{id}",    entry.userId);
+                            cmd.Parameters.AddWithValue($"@titleA{id}",     "about");
+                            cmd.Parameters.AddWithValue($"@contentA{id}",   entry.about);
                             //location
-                            cmd.Parameters.AddWithValue("@useridB" + sI, data[i].userId);
-                            cmd.Parameters.AddWithValue("@titleB" + sI, "loation");
-                            cmd.Parameters.AddWithValue("@contentB" + sI, data[i].location);
+                            cmd.Parameters.AddWithValue($"@useridB{id}",    entry.userId);
+                            cmd.Parameters.AddWithValue($"@titleB{id}",     "loation");
+                            cmd.Parameters.AddWithValue($"@contentB{id}",   entry.location);
                             //name
-                            cmd.Parameters.AddWithValue("@useridC" + sI, data[i].userId);
-                            cmd.Parameters.AddWithValue("@titleC" + sI, "name");
-                            cmd.Parameters.AddWithValue("@contentC" + sI, data[i].name);
+                            cmd.Parameters.AddWithValue($"@useridC{id}",    entry.userId);
+                            cmd.Parameters.AddWithValue($"@titleC{id}",     "name");
+                            cmd.Parameters.AddWithValue($"@contentC{id}",   entry.name);
                             //website
-                            cmd.Parameters.AddWithValue("@useridD" + sI, data[i].userId);
-                            cmd.Parameters.AddWithValue("@titleD" + sI, "website");
-                            cmd.Parameters.AddWithValue("@contentD" + sI, data[i].website);
+                            cmd.Parameters.AddWithValue($"@useridD{id}",    entry.userId);
+                            cmd.Parameters.AddWithValue($"@titleD{id}",     "website");
+                            cmd.Parameters.AddWithValue($"@contentD{id}",   entry.website);
                         }
                         cmd.ExecuteNonQuery();
                     }
@@ -201,7 +204,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error adding users: " + ex.Message);
-                Console.ReadLine();
+                throw;
             }
             conn.Close();
         }
@@ -219,50 +222,48 @@ namespace SupportSiteETL.Migration.Load
             try
             {
                 //execute the statement in batches, total statements to execute is words.Count / batchSize
-                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
                 {
-                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
-
-                    string finalCommand = addPostCommand;
-                    //add (@wordid#, @word#, @titlecount#, @contentcount#, @tagwordcount#, @tagcount#)
                     //add (@postid#,  @type#,  @parentid#, @categoryid#, @catidpath1#, @acount#, @amaxvote#, @userid#, @upvotes#, @downvotes#,
                     //@netvotes#, @views#, @flagcount#, @format#, @created#, @updated#, @updatetype#, @title#, @content#, @notify#, @selchildid)" per row
-                    for (int i = startIndex; i < endIndex; i++)
+                    StringBuilder finalCommand = new StringBuilder(addPostCommand);
+
+                    var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
+                    foreach (var entry in currentBatch) //setup full insert query
                     {
-                        string sI = i.ToString(); //index as a string
-                        finalCommand = finalCommand + "(" + "@postid" + sI + ", @type" + sI + ", @parentid" + sI + ", @categoryid" + sI +
-                            ", @catidpath1" + sI + ", @acount" + sI + ", @amaxvote" + sI + ", @userid" + sI + ", @upvotes" + sI +
-                            ", @downvotes" + sI + ", @netvotes" + sI + ", @views" + sI + ", @flagcount" + sI + ", @format" + sI +
-                            ", @created" + sI + ", @updated" + sI + ", @updatetype" + sI + ", @title" + sI + ", @content" + sI + 
-                            ", @notify" + sI + ", @selchildid" + sI + "),";
+                        string id = entry.postid.ToString(); //unique id for every entry
+                        finalCommand.Append($"(@postid{id}, @type{id}, @parentid{id}, @categoryid{id}, @catidpath1{id}, @acount{id}, @amaxvote{id}, " +
+                                            $"@userid{id}, @upvotes{id}, @downvotes{id}, @netvotes{id}, @views{id}, @flagcount{id}, @format{id}, " +
+                                            $"@created{id}, @updated{id}, @updatetype{id}, @title{id}, @content{id}, @notify{id}, @selchildid{id}),");
                     }
-                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
-                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    finalCommand.Length--; //remove the last comma
+                    //add entry data and execute command
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand.ToString(), conn))
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the data of each entry
+                        foreach (var entry in currentBatch) //fill in the data of each entry
                         {
-                            string sI = i.ToString(); //index as a string
-                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
-                            cmd.Parameters.AddWithValue("@type" + sI, data[i].type);
-                            cmd.Parameters.AddWithValue("@parentid" + sI, data[i].parentid);
-                            cmd.Parameters.AddWithValue("@categoryid" + sI, data[i].categoryid);
-                            cmd.Parameters.AddWithValue("@catidpath1" + sI, data[i].catidpath1);
-                            cmd.Parameters.AddWithValue("@acount" + sI, data[i].acount);
-                            cmd.Parameters.AddWithValue("@amaxvote" + sI, data[i].amaxvote);
-                            cmd.Parameters.AddWithValue("@userid" + sI, data[i].userid);
-                            cmd.Parameters.AddWithValue("@upvotes" + sI, data[i].upvotes);
-                            cmd.Parameters.AddWithValue("@downvotes" + sI, data[i].downvotes);
-                            cmd.Parameters.AddWithValue("@netvotes" + sI, data[i].netvotes);
-                            cmd.Parameters.AddWithValue("@views" + sI, data[i].views);
-                            cmd.Parameters.AddWithValue("@flagcount" + sI, data[i].flagcount);
-                            cmd.Parameters.AddWithValue("@format" + sI, data[i].format);
-                            cmd.Parameters.AddWithValue("@created" + sI, data[i].created);
-                            cmd.Parameters.AddWithValue("@updated" + sI, data[i].updated);
-                            cmd.Parameters.AddWithValue("@updatetype" + sI, data[i].updateType);
-                            cmd.Parameters.AddWithValue("@title" + sI, data[i].title);
-                            cmd.Parameters.AddWithValue("@content" + sI, data[i].content);
-                            cmd.Parameters.AddWithValue("@notify" + sI, data[i].notify);
-                            cmd.Parameters.AddWithValue("@selchildid" + sI, data[i].selchildid);
+                            string id = entry.postid.ToString(); //unique id for every entry
+                            cmd.Parameters.AddWithValue($"@postid{id}",     entry.postid);
+                            cmd.Parameters.AddWithValue($"@type{id}",       entry.type);
+                            cmd.Parameters.AddWithValue($"@parentid{id}",   entry.parentid);
+                            cmd.Parameters.AddWithValue($"@categoryid{id}", entry.categoryid);
+                            cmd.Parameters.AddWithValue($"@catidpath1{id}", entry.catidpath1);
+                            cmd.Parameters.AddWithValue($"@acount{id}",     entry.acount);
+                            cmd.Parameters.AddWithValue($"@amaxvote{id}",   entry.amaxvote);
+                            cmd.Parameters.AddWithValue($"@userid{id}",     entry.userid);
+                            cmd.Parameters.AddWithValue($"@upvotes{id}",    entry.upvotes);
+                            cmd.Parameters.AddWithValue($"@downvotes{id}",  entry.downvotes);
+                            cmd.Parameters.AddWithValue($"@netvotes{id}",   entry.netvotes);
+                            cmd.Parameters.AddWithValue($"@views{id}",      entry.views);
+                            cmd.Parameters.AddWithValue($"@flagcount{id}",  entry.flagcount);
+                            cmd.Parameters.AddWithValue($"@format{id}",     entry.format);
+                            cmd.Parameters.AddWithValue($"@created{id}",    entry.created);
+                            cmd.Parameters.AddWithValue($"@updated{id}",    entry.updated);
+                            cmd.Parameters.AddWithValue($"@updatetype{id}", entry.updateType);
+                            cmd.Parameters.AddWithValue($"@title{id}",      entry.title);
+                            cmd.Parameters.AddWithValue($"@content{id}",    entry.content);
+                            cmd.Parameters.AddWithValue($"@notify{id}",     entry.notify);
+                            cmd.Parameters.AddWithValue($"@selchildid{id}", entry.selchildid);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
                     }
@@ -271,7 +272,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error adding posts: " + ex.Message);
-                Console.ReadLine();
+                throw;
             }
             conn.Close();
         }
@@ -287,30 +288,30 @@ namespace SupportSiteETL.Migration.Load
             try
             {
                 //execute the statement in batches, total statements to execute is words.Count / batchSize
-                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
                 {
-                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
-
-                    string finalCommand = addVotesCommand;
                     //add (@postid, @userid, @vote, @flag, @votecreated, @voteupdated) in each row
-                    for (int i = startIndex; i < endIndex; i++)
+                    StringBuilder finalCommand = new StringBuilder(addVotesCommand);
+
+                    var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
+                    for(int i = 0; i < currentBatch.Count(); i++) //not using for each since id has to be unique, we use the indexes as the id
                     {
-                        string sI = i.ToString(); //index as a string
-                        finalCommand = finalCommand + "(" + "@postid" + sI + ", @userid" + sI + ", @vote" + sI + ", @flag" + sI +
-                            ", @votecreated" + sI + ", @voteupdated" + sI + "),";
+                        string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                        finalCommand.Append($"(@postid{id}, @userid{id}, @vote{id}, @flag{id}, @votecreated{id}, @voteupdated{id}),");
                     }
-                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
-                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    finalCommand.Length--; //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand.ToString(), conn))
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the data of each entry
+                        for(int i = 0; i < currentBatch.Count(); i++) //fill in the data of each entry
                         {
-                            string sI = i.ToString(); //index as a string
-                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
-                            cmd.Parameters.AddWithValue("@userid" + sI, data[i].userid);
-                            cmd.Parameters.AddWithValue("@vote" + sI, data[i].vote);
-                            cmd.Parameters.AddWithValue("@flag" + sI, data[i].flag);
-                            cmd.Parameters.AddWithValue("@votecreated" + sI, data[i].votecreated);
-                            cmd.Parameters.AddWithValue("@voteupdated" + sI, data[i].voteupdated);
+                            string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                            var entry = data[i + dataLoadedCount];
+                            cmd.Parameters.AddWithValue($"@postid{id}",      entry.postid);
+                            cmd.Parameters.AddWithValue($"@userid{id}",      entry.userid);
+                            cmd.Parameters.AddWithValue($"@vote{id}",        entry.vote);
+                            cmd.Parameters.AddWithValue($"@flag{id}",        entry.flag);
+                            cmd.Parameters.AddWithValue($"@votecreated{id}", entry.votecreated);
+                            cmd.Parameters.AddWithValue($"@voteupdated{id}", entry.voteupdated);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
                     }
@@ -319,7 +320,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error adding new user_vote for a post: " + ex.Message);
-                Console.ReadLine();
+                throw;
             }
             conn.Close();
         }
@@ -338,21 +339,21 @@ namespace SupportSiteETL.Migration.Load
             {
                 using (MySqlCommand cmd = new MySqlCommand(addCategoryCommand, conn)) //to qa_users
                 {
-                    cmd.Parameters.AddWithValue("@categoryid", cat.id);
-                    cmd.Parameters.AddWithValue("@parentid", cat.parentid);
-                    cmd.Parameters.AddWithValue("@title", cat.title);
-                    cmd.Parameters.AddWithValue("@tags", cat.tag);
-                    cmd.Parameters.AddWithValue("@content", cat.content);
-                    cmd.Parameters.AddWithValue("@qcount", cat.qcount);
-                    cmd.Parameters.AddWithValue("@position", cat.position);
-                    cmd.Parameters.AddWithValue("@backpath", cat.backpath);
+                    cmd.Parameters.AddWithValue("@categoryid",  cat.id);
+                    cmd.Parameters.AddWithValue("@parentid",    cat.parentid);
+                    cmd.Parameters.AddWithValue("@title",       cat.title);
+                    cmd.Parameters.AddWithValue("@tags",        cat.tag);
+                    cmd.Parameters.AddWithValue("@content",     cat.content);
+                    cmd.Parameters.AddWithValue("@qcount",      cat.qcount);
+                    cmd.Parameters.AddWithValue("@position",    cat.position);
+                    cmd.Parameters.AddWithValue("@backpath",    cat.backpath);
                     cmd.ExecuteNonQuery();
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Error adding new category: " + ex.Message);
-                Console.ReadLine();
+                throw;
             }
             conn.Close();
         }
@@ -377,30 +378,30 @@ namespace SupportSiteETL.Migration.Load
             try
             {
                 //execute the statement in batches, total statements to execute is words.Count / batchSize
-                for(int startIndex = 0; startIndex < data.Count; startIndex=startIndex+batchSize)
+                for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
                 {
-                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
+                    //add (@wordid, @word, @titlecount, @contentcount, @tagwordcount, @tagcount) in each row
+                    StringBuilder finalCommand = new StringBuilder(wordsCommand);
 
-                    string finalCommand = wordsCommand;
-                    //add (@wordid#, @word#, @titlecount#, @contentcount#, @tagwordcount#, @tagcount#)
-                    for (int i = startIndex; i < endIndex; i++)
+                    var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
+                    for (int i = 0; i < currentBatch.Count(); i++) //not using for each since id has to be unique, we use the indes as the id
                     {
-                        string sI = i.ToString(); //index as a string
-                        finalCommand = finalCommand + "(@wordid" + sI + ", @word" + sI + ", @titlecount" + sI + ", @contentcount" + sI + 
-                            ", @tagwordcount" + sI + ", @tagcount" + sI + "),";
+                        string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                        finalCommand.Append($"(@wordid{id}, @word{id}, @titlecount{id}, @contentcount{id}, @tagwordcount{id}, @tagcount{id}),");
                     }
-                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
-                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    finalCommand.Length--; //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand.ToString(), conn))
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        for (int i = 0; i < currentBatch.Count(); i++) //fill in the data of each entry
                         {
-                            string sI = i.ToString(); //index as a string
-                            cmd.Parameters.AddWithValue("@wordid" + sI,         data[i].wordid);
-                            cmd.Parameters.AddWithValue("@word" + sI,           data[i].word);
-                            cmd.Parameters.AddWithValue("@titlecount" + sI,     data[i].titlecount);
-                            cmd.Parameters.AddWithValue("@contentcount" + sI,   data[i].contentcount);
-                            cmd.Parameters.AddWithValue("@tagwordcount" + sI,   data[i].tagwordcount);
-                            cmd.Parameters.AddWithValue("@tagcount" + sI,       data[i].tagcount);
+                            string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                            var entry = data[i + dataLoadedCount];
+                            cmd.Parameters.AddWithValue($"@wordid{id}",         entry.wordid);
+                            cmd.Parameters.AddWithValue($"@word{id}",           entry.word);
+                            cmd.Parameters.AddWithValue($"@titlecount{id}",     entry.titlecount);
+                            cmd.Parameters.AddWithValue($"@contentcount{id}",   entry.contentcount);
+                            cmd.Parameters.AddWithValue($"@tagwordcount{id}",   entry.tagwordcount);
+                            cmd.Parameters.AddWithValue($"@tagcount{id}",       entry.tagcount);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
                     }
@@ -409,7 +410,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error setting word table: " + ex.Message);
-                Console.ReadLine();
+                throw;
             }
             conn.Close();
         }
@@ -421,25 +422,26 @@ namespace SupportSiteETL.Migration.Load
             try
             {
                 //execute the statement in batches, total statements to execute is words.Count / batchSize
-                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
                 {
-                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
+                    //add (@postid, @wordid) in each row
+                    StringBuilder finalCommand = new StringBuilder(wordsCommand);
 
-                    string finalCommand = wordsCommand;
-                    //add (@postid#, wordid#)
-                    for (int i = startIndex; i < endIndex; i++)
+                    var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
+                    for (int i = 0; i < currentBatch.Count(); i++) //not using for each since id has to be unique, we use the indes as the id
                     {
-                        string sI = i.ToString(); //index as a string
-                        finalCommand = finalCommand + "(@postid" + sI + ", @wordid" + sI + "),";
+                        string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                        finalCommand.Append($"(@postid{id}, @wordid{id}),");
                     }
-                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
-                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    finalCommand.Length--; //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand.ToString(), conn))
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        for (int i = 0; i < currentBatch.Count(); i++) //fill in the data of each entry
                         {
-                            string sI = i.ToString(); //index as a string
-                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
-                            cmd.Parameters.AddWithValue("@wordid" + sI, data[i].wordid);
+                            string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                            var entry = data[i + dataLoadedCount];
+                            cmd.Parameters.AddWithValue($"@postid{id}", entry.postid);
+                            cmd.Parameters.AddWithValue($"@wordid{id}", entry.wordid);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
                     }
@@ -448,7 +450,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error setting tag table: " + ex.Message);
-                Console.ReadLine();
+                throw;
             }
             conn.Close();
         }
@@ -460,26 +462,27 @@ namespace SupportSiteETL.Migration.Load
             try
             {
                 //execute the statement in batches, total statements to execute is words.Count / batchSize
-                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
                 {
-                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
-
-                    string finalCommand = wordsCommand;
                     //add (@postid#, @wordid#, @postcreated#)
-                    for (int i = startIndex; i < endIndex; i++)
+                    StringBuilder finalCommand = new StringBuilder(wordsCommand);
+
+                    var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
+                    for (int i = 0; i < currentBatch.Count(); i++) //not using for each since id has to be unique, we use the indexes as the id
                     {
-                        string sI = i.ToString(); //index as a string
-                        finalCommand = finalCommand + "(@postid" + sI + ", @wordid" + sI + ", @postcreated" + sI + "),";
+                        string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                        finalCommand.Append($"(@postid{id}, @wordid{id}, @postcreated{id}),");
                     }
-                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
-                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    finalCommand.Length--; //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand.ToString(), conn))
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        for (int i = 0; i < currentBatch.Count(); i++) //fill in the data of each entry
                         {
-                            string sI = i.ToString(); //index as a string
-                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
-                            cmd.Parameters.AddWithValue("@wordid" + sI, data[i].wordid);
-                            cmd.Parameters.AddWithValue("@postcreated" + sI, data[i].postcreated);
+                            string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                            var entry = data[i + dataLoadedCount];
+                            cmd.Parameters.AddWithValue($"@postid{id}", entry.postid);
+                            cmd.Parameters.AddWithValue($"@wordid{id}", entry.wordid);
+                            cmd.Parameters.AddWithValue($"@postcreated{id}", entry.postcreated);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
                     }
@@ -488,7 +491,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error setting PostTags table: " + ex.Message);
-                Console.ReadLine();
+                throw;
             }
             conn.Close();
         }
@@ -500,29 +503,29 @@ namespace SupportSiteETL.Migration.Load
             try
             {
                 //execute the statement in batches, total statements to execute is words.Count / batchSize
-                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
                 {
-                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
-
-                    string finalCommand = wordsCommand;
                     //add (@postid#, @wordid#, @count#, @type#, @questionid#)
-                    for (int i = startIndex; i < endIndex; i++)
+                    StringBuilder finalCommand = new StringBuilder(wordsCommand);
+
+                    var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
+                    for (int i = 0; i < currentBatch.Count(); i++) //not using for each since id has to be unique, we use the indes as the id
                     {
-                        string sI = i.ToString(); //index as a string
-                        finalCommand = finalCommand + "(@postid" + sI + ", @wordid" + sI + ", @count" + sI + ", @type" + sI +
-                            ", @questionid" + sI + "),";
+                        string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                        finalCommand.Append($"(@postid{id}, @wordid{id}, @count{id}, @type{id}, @questionid{id}),");
                     }
-                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
-                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    finalCommand.Length--; //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand.ToString(), conn))
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        for (int i = 0; i < currentBatch.Count(); i++) //fill in the data of each entry
                         {
-                            string sI = i.ToString(); //index as a string
-                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
-                            cmd.Parameters.AddWithValue("@wordid" + sI, data[i].wordid);
-                            cmd.Parameters.AddWithValue("@count" + sI, data[i].count);
-                            cmd.Parameters.AddWithValue("@type" + sI, data[i].type);
-                            cmd.Parameters.AddWithValue("@questionid" + sI, data[i].questionid);
+                            string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                            var entry = data[i + dataLoadedCount];
+                            cmd.Parameters.AddWithValue($"@postid{id}", entry.postid);
+                            cmd.Parameters.AddWithValue($"@wordid{id}", entry.wordid);
+                            cmd.Parameters.AddWithValue($"@count{id}", entry.count);
+                            cmd.Parameters.AddWithValue($"@type{id}", entry.type);
+                            cmd.Parameters.AddWithValue($"@questionid{id}", entry.questionid);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
                     }
@@ -531,7 +534,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error setting content table: " + ex.Message);
-                Console.ReadLine();
+                throw;
             }
             conn.Close();
         }
@@ -543,25 +546,26 @@ namespace SupportSiteETL.Migration.Load
             try
             {
                 //execute the statement in batches, total statements to execute is words.Count / batchSize
-                for (int startIndex = 0; startIndex < data.Count; startIndex = startIndex + batchSize)
+                for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
                 {
-                    int endIndex = Math.Min(data.Count, startIndex + batchSize); //[startIndex, endIndex) is our range
+                    //add (@postid, @wordid) in each row
+                    StringBuilder finalCommand = new StringBuilder(wordsCommand);
 
-                    string finalCommand = wordsCommand;
-                    //add (@postid#, wordid#)
-                    for (int i = startIndex; i < endIndex; i++)
+                    var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
+                    for (int i = 0; i < currentBatch.Count(); i++) //not using for each since id has to be unique, we use the indes as the id
                     {
-                        string sI = i.ToString(); //index as a string
-                        finalCommand = finalCommand + "(@postid" + sI + ", @wordid" + sI + "),";
+                        string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                        finalCommand.Append($"(@postid{id}, @wordid{id}),");
                     }
-                    finalCommand = finalCommand.Remove(finalCommand.Length - 1); //remove the last comma
-                    using (MySqlCommand cmd = new MySqlCommand(finalCommand, conn))
+                    finalCommand.Length--; //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand.ToString(), conn))
                     {
-                        for (int i = startIndex; i < endIndex; i++) //fill in the entries
+                        for (int i = 0; i < currentBatch.Count(); i++) //fill in the data of each entry
                         {
-                            string sI = i.ToString(); //index as a string
-                            cmd.Parameters.AddWithValue("@postid" + sI, data[i].postid);
-                            cmd.Parameters.AddWithValue("@wordid" + sI, data[i].wordid);
+                            string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
+                            var entry = data[i + dataLoadedCount];
+                            cmd.Parameters.AddWithValue($"@postid{id}", entry.postid);
+                            cmd.Parameters.AddWithValue($"@wordid{id}", entry.wordid);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
                     }
@@ -570,7 +574,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error setting title table: " + ex.Message);
-                Console.ReadLine();
+                throw;
             }
             conn.Close();
         }

@@ -72,6 +72,7 @@ namespace SupportSiteETL.Migration.Extract
             catch (Exception ex)
             {
                 Console.WriteLine("Error retrieving post count: " + ex.Message);
+                throw;
             }
             return postid;
         }

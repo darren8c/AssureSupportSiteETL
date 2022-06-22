@@ -43,6 +43,7 @@ namespace SupportSiteETL.Databases
             {
                 result = false;
                 Console.WriteLine(err.ToString());
+                //no need to throw for just testing connection
             }
 
             conn.Close();
@@ -69,6 +70,7 @@ namespace SupportSiteETL.Databases
             catch (Exception err)
             {
                 Console.WriteLine(err.ToString());
+                throw;
             }
             finally
             {
@@ -117,6 +119,7 @@ namespace SupportSiteETL.Databases
             catch (Exception err)
             {
                 Console.WriteLine(err.ToString());
+                throw;
             }
             finally
             {

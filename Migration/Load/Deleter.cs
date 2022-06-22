@@ -110,6 +110,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error when deleteing posts: " + ex);
+                throw;
             }
             conn.Close();
         }
@@ -163,6 +164,7 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error when deleteing word tables: " + ex);
+                throw;
             }
             conn.Close();
         }
