@@ -19,6 +19,8 @@ namespace SupportSiteETL.Migration.Transform
         private Dictionary<int, int> oldToNewId; //contains mapping from discourse id to new id.
         //private Dictionary<int, int> oldToNewPostId; //contains mapping from discourse post id to new id.
         private Dictionary<int, int> oldToNewCatId; //contains mapping from discourse category id to new category id.
+
+        private Dictionary<int, string> specialUserRules; //contains userid's and what special condition they follow see resourceinfo.txt
         
         private List<int> devUserIds; //used for selecting answers, ids of all dev users
 
@@ -36,6 +38,7 @@ namespace SupportSiteETL.Migration.Transform
             loader = new Loader();
 
             currPostId = extractor.GetQ2ALastPostId() + 1; //this will be the first post id to write to
+            PopulateSpecialUserRules(); //set this dictionary
         }
 
         //extract the post data, to fill the fields we need the map of old id's to new id's which requires the user transferer
@@ -56,6 +59,19 @@ namespace SupportSiteETL.Migration.Transform
             {
                 if (topic["archetype"] != "regular") //all other types are private messages and shouldn't be transferred
                     continue;
+                if (specialUserRules.ContainsKey(int.Parse(topic["user_id"]))) //special user rules apply
+                {
+                    string flag = specialUserRules[int.Parse(topic["user_id"])]; //the flag for this user, i.e. resourceinfo.txt
+                    if(flag == "Nathan") //posted by the dev Nathan
+                    {
+                        if (DateTime.Parse(topic["created_at"]) < DateTime.Parse("2015-04-05")) //outdated tutorial, happened before Apr 5th 2015
+                            continue;
+                        if (topic["title"].Substring(0, 3) == "FB ") //fog bug, ignore these posts
+                            continue;
+                    }
+                }
+
+
                 bool deleteCategory = (oldToNewCatId[int.Parse(topic["category_id"])] == -1);
                 if (deleteCategory) //if something belongs to "Delete" don't add to q2a
                     continue;
@@ -105,7 +121,6 @@ namespace SupportSiteETL.Migration.Transform
         }
 
         //from a set of posts on a question select a best answer if possible
-        //a post can be a selected answer if it is the last answer and the poster is a dev
         //each post in a topic is scored by a number of factors, the highest score is the selected answer (assuming it passes a min threshhold)
         private void SetAnswer(ref List<Q2APost> posts)
         {
@@ -277,6 +292,27 @@ namespace SupportSiteETL.Migration.Transform
                 voteDetails[i].voteupdated = DateTime.Parse(dcPostsActions[i]["updated_at"]);
             }
             return voteDetails;
+        }
+
+        private void PopulateSpecialUserRules()
+        {
+            specialUserRules = new Dictionary<int, string>(); //old discourse id to flag indicating rules
+
+            //fill in the lookup table from old discourse usernames to their new role name under Q2A
+            var lines = File.ReadLines("Resources/specialUserPosts.txt");
+            foreach (string line in lines)
+            {
+                string[] data = line.Split(',');
+                if (data.Length != 2) //there should always be 2 fields (discourse_user_id, flag_type)
+                {
+                    Console.WriteLine("Error, specialUserPosts.txt is not in the correct format!");
+                    return;
+                }
+                int id = int.Parse(data[0]);
+                string flag = data[1];
+
+                specialUserRules.Add(id, flag);
+            }
         }
     }
 }

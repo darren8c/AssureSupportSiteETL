@@ -15,11 +15,12 @@ roleMapping.txt:
 specialUserPosts.txt:
 	This is a file which is an override to certain users so specific users posts will be either modified, hidden or otherwise be treated differently,
 	i.e. there are many guides on discourse which are outdated and don't need to be transferred over these posts are all made by the same user so they are 
-	given the flag "obscure".
+	given the flag "Nathan".
 	Flag types:
 		"delete Q" (don't transfer any questions made by this user)
 		"delete P" (don't transfer any questions, answers, made by this user)
 		"obscure" (don't transfer any questions made by this user, unless their are answers/comments made by different users)
+		"Nathan" (congrats to Nathan for his own flag, remove any posts made on Apr 4 or begin with "FB " in the title)
 
 	Format:
 		discourse_id, flag_type
