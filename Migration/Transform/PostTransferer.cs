@@ -165,9 +165,16 @@ namespace SupportSiteETL.Migration.Transform
 
                 bool opReplied = false; //check if the question author replied to this answer
                 uint answerId = posts[i].postid;
-                if (i + 1 < posts.Count && (posts[i + 1].userid == opId)) //if the following post (by time) was by the op, this counts as a reply
-                    opReplied = true;
-                else
+                for (int j = i + 1; j < posts.Count; j++) //if the following answer (ignoring comments in between) is made by the op
+                {
+                    if (posts[j].type=="A") //the next answer
+                    {
+                        if (posts[j].userid == opId) //counts as a reply
+                            opReplied = true;
+                        break; //only look at the first answer
+                    }
+                }
+                if(!opReplied) //additional check by seeing if op replied as a comment
                     opReplied = posts.Exists(p => p.parentid == answerId && p.userid == opId); //questioner replied as a comment, counts as a reply
                 if (opReplied) //original poster replied to this answer
                     score += oprW * 1;
