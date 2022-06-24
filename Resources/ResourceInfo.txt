@@ -1,0 +1,25 @@
+﻿This is a readme for the different resource files in this directory, what they do and what their format is:
+
+categoryMapping.txt:
+	This file maps discourse category ids to the new q2a category name, "Delete" is a special category.
+	Anything in "Delete" will not be brought to a category but instead won't be transferred at all
+	Format:
+		discourse_category_id, new_category_name
+
+roleMapping.txt:
+	This file maps discourse id's of users who were admin/mods on discourse and maps them to a new role on q2a, if an id is not listed
+	they are just mapped to a default user "Registered level" which is level=0.
+	Format:
+		discourse_id, new_role_name
+
+specialUserPosts.txt:
+	This is a file which is an override to certain users so specific users posts will be either modified, hidden or otherwise be treated differently,
+	i.e. there are many guides on discourse which are outdated and don't need to be transferred over these posts are all made by the same user so they are 
+	given the flag "obscure".
+	Flag types:
+		"delete Q" (don't transfer any questions made by this user)
+		"delete P" (don't transfer any questions, answers, made by this user)
+		"obscure" (don't transfer any questions made by this user, unless their are answers/comments made by different users)
+
+	Format:
+		discourse_id, flag_type

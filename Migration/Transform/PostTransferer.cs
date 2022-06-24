@@ -101,32 +101,79 @@ namespace SupportSiteETL.Migration.Transform
 
             List<Q2APost> newPosts = replyIdMap.Values.ToList();
             SetAnswer(ref newPosts); //go through the posts and select a best answer if possible
-
             return newPosts;
         }
 
         //from a set of posts on a question select a best answer if possible
         //a post can be a selected answer if it is the last answer and the poster is a dev
+        //each post in a topic is scored by a number of factors, the highest score is the selected answer (assuming it passes a min threshhold)
         private void SetAnswer(ref List<Q2APost> posts)
         {
+            posts = posts.OrderBy(p => p.created).ToList(); //order by date, question post is now first index
+            if (posts.Count(p => p.type == "A") == 0) //no need to try selecting an answer if there are none
+                return;
 
-            //find the last answer, find the main question, check if a valid answer (set it if so)
-            //find the index of the main question, all topics have 1 question first will always find an object
-            int mainPostIndex = posts.IndexOf(posts.First(p => p.type[0] == 'Q'));
+            double threshold = 15; //min points needed to be a selected answer
+            double ordW = 1; //weight of recency / post order, i.e. first post is 1, second is 2 ...
+            double devW = 15; //weight of being a dev, admin, expert , etc.
+            double votW = 10; //weight of upvotes
+            double oprW = 15; //weight of the op replying to the post
+            double comW = 4; //weight of number of comments on an answer, comW * numOfComments
+            //weight of post length (compared to the average), i.e. avg is 100 words, a post with 150 is lenW * .5
+            double lenW = 20; //i.e. if the length is double average this is how many points they get
+            double lenWBonusMax = 30; //don't allow the bonus from the lenBonus to go beyond this value
+            double lenWBonusMin = -5; //don't allow the bonus from the lenBonus to go below this value, below 0 allows deductions
+            //when badges are added, a weight (or several) can be added.
 
-            int lastAnswerIndex = -1; //index of the last answer given (by time)
-            DateTime lastTime = DateTime.UnixEpoch; //unix time, basically lowest value
-            for(int i = 0; i < posts.Count; i++) //find the last answer
+            int? opId = posts[0].userid; //userid of the the question poster
+
+            int bestScoreIndex = 0;
+            double bestScore = 0;
+            double avgAnswerLength = posts.Where(p => p.type == "A").Average(a => a.content.Length); //average char count of the answers
+
+            int postNum = 0; //used to track post order
+            for(int i = 0; i < posts.Count; i++) //score each post
             {
-                if (posts[i].type[0] == 'A' && posts[i].created > lastTime) //if an answer and more recent
+                if (posts[i].type != "A") //only answers should get a score
+                    continue;
+                postNum++;
+
+
+                //------------------ Determine the score for this post
+                double score = 0; //score for this post
+
+                score += ordW * postNum; //post order
+                if (devUserIds.Contains((int)posts[i].userid)) //is dev
+                    score += devW * 1;
+                
+                score += votW * posts[i].netvotes; //votes
+
+                bool opReplied = false; //check if the question author replied to this answer
+                uint answerId = posts[i].postid;
+                if (i + 1 < posts.Count && (posts[i + 1].userid == opId)) //if the following post (by time) was by the op, this counts as a reply
+                    opReplied = true;
+                else
+                    opReplied = posts.Exists(p => p.parentid == answerId && p.userid == opId); //questioner replied as a comment, counts as a reply
+                if (opReplied) //original poster replied to this answer
+                    score += oprW * 1;
+
+                uint thisPostId = posts[i].postid;
+                score += comW * posts.Count(p => p.type == "C" && p.parentid == thisPostId); //number of comments
+
+                //length bonus, only add if above average, value must be between the min and max values
+                score += Math.Clamp(lenW * ((posts[i].content.Length - avgAnswerLength) / avgAnswerLength), lenWBonusMin, lenWBonusMax);
+                //------------------
+
+                if(score > bestScore)
                 {
-                    lastAnswerIndex = i;
-                    lastTime = posts[i].created;
+                    bestScore = score;
+                    bestScoreIndex = i;
                 }
             }
+            if (bestScore >= threshold) //only select an answer if it passes a minimum score
+                posts[0].selchildid = (int)posts[bestScoreIndex].postid; //select the best score 
 
-            if (lastAnswerIndex != -1 && devUserIds.Contains((int)posts[lastAnswerIndex].userid)) //a non basic user, either an editor, expert, ... etc.
-                posts[mainPostIndex].selchildid = (int)posts[lastAnswerIndex].postid; //set this as a selected answer
+            posts = posts.OrderBy(p => p.postid).ToList(); //reorder by postid
         }
 
         private void SetBasicPostAttributes(ref Q2APost newPost, Topic topic, Post dcPost)
