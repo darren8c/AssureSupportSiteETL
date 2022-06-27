@@ -17,6 +17,8 @@ namespace SupportSiteETL.Migration.Transform
         WordsTransformer wt;
         Loader loader;
 
+        Anonymizer anon;
+
         public Transformer()
         {
             ut = new UserTransformer();
@@ -24,13 +26,27 @@ namespace SupportSiteETL.Migration.Transform
             pt = new PostTransformer();
             wt = new WordsTransformer();
             loader = new Loader();
+
+            anon = new Anonymizer();
         }
 
         public void Extract()
         {
             ut.Extract();
+
+            //pass some key information to the different transformers
+            anon.userIdMap = ut.oldToNewId;
+            anon.q2aUsers = ut.newUsers;
+            pt.anonymizer = anon;
+
             ct.Extract();
-            pt.Extract(ut.oldToNewId, ct.catIdMap, ut.devUsers); //the post extraction requires the user id conversion dictionary
+
+            //pass some key information to the different transformers
+            pt.oldToNewId = ut.oldToNewId;
+            pt.oldToNewCatId = ct.catIdMap;
+            pt.devUserIds = ut.devUsers;
+
+            pt.Extract(); //the post extraction information from the other classes
         }
 
         public void Load()
