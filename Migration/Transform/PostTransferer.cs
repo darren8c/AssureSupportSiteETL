@@ -16,28 +16,28 @@ namespace SupportSiteETL.Migration.Transform
     using VoteDetail = Dictionary<string, string>;
     public class PostTransformer
     {
-        private Dictionary<int, int> oldToNewId; //contains mapping from discourse id to new id.
+        //these public fields are set from the main transformer post construction
+        public Dictionary<int, int> oldToNewId; //contains mapping from discourse id to new id.
         //private Dictionary<int, int> oldToNewPostId; //contains mapping from discourse post id to new id.
-        private Dictionary<int, int> oldToNewCatId; //contains mapping from discourse category id to new category id.
+        public Dictionary<int, int> oldToNewCatId; //contains mapping from discourse category id to new category id.
+        public List<int> devUserIds; //used for selecting answers, ids of all dev users
 
         private Dictionary<int, string> specialUserRules; //contains userid's and what special condition they follow see resourceinfo.txt
         
-        private List<int> devUserIds; //used for selecting answers, ids of all dev users
 
         private uint currPostId;
 
         private List<Q2APost> allPosts;
 
-        Anonymizer anonymizer;
-        Extractor extractor;
-        Loader loader;
+        private Extractor extractor;
+        private Loader loader;
+        public Anonymizer anonymizer; //set from transferer after construction
 
         public PostTransformer()
         {
             allPosts = new List<Q2APost>();
             extractor = new Extractor();
             loader = new Loader();
-            anonymizer = new Anonymizer();
 
             currPostId = extractor.GetQ2ALastPostId() + 1; //this will be the first post id to write to
             PopulateSpecialUserRules(); //set this dictionary
@@ -45,13 +45,9 @@ namespace SupportSiteETL.Migration.Transform
 
         //extract the post data, to fill the fields we need the map of old id's to new id's which requires the user transferer
         //a map for old cat id's to new is also needed, lastly devUser list is needed to select answers
-        public void Extract(Dictionary<int, int> o2nId, Dictionary<int,int> o2nIdCat, List<int> devUsers)
+        public void Extract()
         {
-            Console.WriteLine("Extracting topics and assembling posts...");
-
-            oldToNewId = o2nId;
-            oldToNewCatId = o2nIdCat;
-            devUserIds = devUsers;
+            Console.WriteLine("Extracting topics, anonymizing data, and assembling posts...");
 
             //retrieve all the topics, then for each topic create all the posts
             List<Topic> topics = extractor.GetDiscourseTopics();
@@ -73,8 +69,7 @@ namespace SupportSiteETL.Migration.Transform
                     }
                 }
 
-
-                bool deleteCategory = (oldToNewCatId[int.Parse(topic["category_id"])] == -1);
+                bool deleteCategory = oldToNewCatId[int.Parse(topic["category_id"])] == -1;
                 if (deleteCategory) //if something belongs to "Delete" don't add to q2a
                     continue;
 
@@ -82,7 +77,7 @@ namespace SupportSiteETL.Migration.Transform
                 //Console.WriteLine("Topic " + topic["id"] + " extracted");
             }
 
-            Console.WriteLine("Posts assembled!");
+            Console.WriteLine("Posts Transformed!");
         }
 
         //save all the post data to the tables, includes, likes, tags, etc.
@@ -285,7 +280,7 @@ namespace SupportSiteETL.Migration.Transform
 
             string s = orig;
             if (s.Length >= 12000) //q2a doesn't permit this field to have over 12000 chars
-                s = s.Substring(0, 11500); //cutoff a bit earlier just in case
+                s = s.Substring(0, 11000); //cutoff a bit earlier just in case
             
             //basically if a char is stored in the string using surrogates, it is too long to be displayed in q2a
             for (int i = 0; i < s.Length; i++) //this may be slow, look into a faster way to switch out chars that decode to more than 3 

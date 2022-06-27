@@ -26,7 +26,11 @@ namespace SupportSiteETL.Migration.Extract
         // Gets all users joined with their user stats
         public List<Dictionary<string, string>> GetDiscourseUsers()
         {
-            return dc.ExecuteQuery("SELECT * FROM public.users JOIN public.user_stats ON public.users.id=public.user_stats.user_id ORDER BY id;");
+            return dc.ExecuteQuery("SELECT public.users.*, public.user_stats.*, email FROM public.users " +
+                "JOIN public.user_stats ON public.users.id=public.user_stats.user_id " +
+                "JOIN public.user_emails ON public.users.id=public.user_emails.user_id " +
+                "WHERE public.user_emails.primary=true " +
+                "ORDER BY public.users.id;");
         }
         public List<Dictionary<string, string>> GetDiscourseTopics()
         {

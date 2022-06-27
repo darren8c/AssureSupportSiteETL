@@ -303,6 +303,8 @@ namespace SupportSiteETL.Migration.Transform
                     currWord = ""; //reset
                 }
             }
+            if (currWord != "") //add final word
+                words.Add(currWord);
             return words;
         }
 
