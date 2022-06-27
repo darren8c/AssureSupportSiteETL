@@ -264,7 +264,12 @@ namespace SupportSiteETL.Migration.Transform
                 else //must be a comment
                 {
                     newPost.type = "C"; //comment
-                    newPost.parentid = (int)replyIdMap[replyNum].postid;
+
+                    //find the parent answer, a parent can not be a comment
+                    if (replyIdMap[replyNum].type[0] == 'A')
+                        newPost.parentid = (int)replyIdMap[replyNum].postid;
+                    else //parentid is a comment, the parent of the parent must be the answer
+                        newPost.parentid = (int)replyIdMap[replyNum].parentid;
                 }
             }
             //check if the post should be hidden
