@@ -310,7 +310,7 @@ namespace SupportSiteETL.Migration.Transform
         //from: https://www.puresourcecode.com/dotnet/csharp/how-to-strip-all-html-tags-and-entities-and-get-clear-text/
         private string StripHTML(string html)
         {
-            return Regex.Replace(html, "<.*?>", ""); //replace any tags with spaces
+            return Regex.Replace(html, "<.*?>", ""); //replace any tags with empty string
         }
 
         //return the parent question id of a post

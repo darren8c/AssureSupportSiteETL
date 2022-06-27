@@ -28,6 +28,7 @@ namespace SupportSiteETL.Migration.Transform
 
         private List<Q2APost> allPosts;
 
+        Anonymizer anonymizer;
         Extractor extractor;
         Loader loader;
 
@@ -36,6 +37,7 @@ namespace SupportSiteETL.Migration.Transform
             allPosts = new List<Q2APost>();
             extractor = new Extractor();
             loader = new Loader();
+            anonymizer = new Anonymizer();
 
             currPostId = extractor.GetQ2ALastPostId() + 1; //this will be the first post id to write to
             PopulateSpecialUserRules(); //set this dictionary
@@ -114,8 +116,10 @@ namespace SupportSiteETL.Migration.Transform
                 //all fields set, add to map
                 replyIdMap.Add(int.Parse(dcPost["post_number"]), newPost);
             }
-
+            
             List<Q2APost> newPosts = replyIdMap.Values.ToList();
+            anonymizer.AnonymizeThread(ref newPosts, dcPosts); //remove user names and avatars
+
             SetAnswer(ref newPosts); //go through the posts and select a best answer if possible
             return newPosts;
         }
