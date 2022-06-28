@@ -16,6 +16,12 @@
     <None Update="Resources\categoryMappings.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\CountryStatuses.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\LookupIP.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\roleMappings.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

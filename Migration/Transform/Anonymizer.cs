@@ -13,11 +13,16 @@ namespace SupportSiteETL.Migration.Transform
     using DiscoursePost = Dictionary<string, string>; //type alias
     using CensoredWords = Dictionary<string, string>; //key: censored word (i.e. name), value: what to replace it with
     using User = Dictionary<string, string>; //alias for the user data from the databases
+
+    using BlockIP = KeyValuePair<SimpleIP, SimpleIP>; //begin and end for an ip block (end is inclusive)
+
     public class Anonymizer
     {
         private List<User> discourseUsers; //data for the discourse users, used for generating list of words to remove
         public List<Q2AUser> q2aUsers; //q2a users, this is set by Transferer sometime after the constructor
         public Dictionary<int, int> userIdMap; //go from discourse to q2a user id, WARNING this is set by Transferer sometime after the constructor
+
+        private Dictionary<int, bool> sensitiveUser; //go from discourse id to sensitive region or not
         
         private Extractor extractor;
 
@@ -25,14 +30,11 @@ namespace SupportSiteETL.Migration.Transform
         {
             extractor = new Extractor();
             discourseUsers = extractor.GetDiscourseUsers();
-        }
 
-        //if the discourse user's ip was from a sensitive location, uses a xml mapping file
-        public bool IsSensitiveUser(int discId)
-        {
-            return false;
+            Console.WriteLine("Determining sensitive users...");
+            PopulateSensitiveList(); //sets sensitiveUser from the files
+            Console.WriteLine("Sensitive users identified!");
         }
-
 
         //from a given topic/thread remove all data that relates to anonymity, note at this time userIdMap should be set already
         public void AnonymizeThread(ref List<Q2APost> posts, List<DiscoursePost> postsD)
@@ -240,6 +242,72 @@ namespace SupportSiteETL.Migration.Transform
             p.content = String.Join("", parts);
 
             return p;
+        }
+
+
+        private void PopulateSensitiveList()
+        {
+            Dictionary<string, bool> locationMapper = new Dictionary<string, bool>(); //go from country code to sensitive status
+            //fill in the lookup table
+            var lines = File.ReadLines("Resources/CountryStatuses.csv");
+            foreach (string line in lines)
+            {
+                string[] data = line.Split(',');
+                if (data.Length != 2) //there should always be 2 fields (countryCode, blocked/unblocked)
+                {
+                    Console.WriteLine("Error, CountryStatuses.csv is not in the correct format!");
+                    return;
+                }
+                locationMapper.Add(data[0], data[1] == "blocked");
+            }
+
+            List<KeyValuePair<BlockIP, bool>>  blockSensitivities = new List<KeyValuePair<BlockIP, bool>>();
+            //fill in from look up table
+            lines = File.ReadLines("Resources/LookupIP.csv");
+            foreach (string line in lines)
+            {
+                string[] data = line.Split(',');
+                if (data.Length != 3) //there should always be 3 fields (ipRangeStart, ipRangeStart, countryCode)
+                {
+                    Console.WriteLine("Error, LookupIP.csv is not in the correct format!");
+                    return;
+                }
+                BlockIP blockIP = new BlockIP(new SimpleIP(data[0]), new SimpleIP(data[1])); //the block for this line
+                string countryCode = data[2];
+                bool sensitive = false;
+                if (locationMapper.ContainsKey(countryCode))
+                    sensitive = locationMapper[countryCode]; //set from map, otherwise, it will be marked not sensitive
+
+                blockSensitivities.Add(new KeyValuePair<BlockIP, bool>(blockIP, sensitive)); //add to the list the range and sensitivity status
+            }
+
+            //go through each user id and find out if they are sensitive, this ensures we only check once per user
+            sensitiveUser = new Dictionary<int, bool>();
+            foreach (User u in discourseUsers)
+            {
+                string ip1 = u["ip_address"]; //first ip to check
+                string ip2 = u["registration_ip_address"]; //second ip to check
+
+                bool sensitive = IsSensitiveIP(ip1, ref blockSensitivities) || IsSensitiveIP(ip2, ref blockSensitivities);
+                sensitiveUser.Add(int.Parse(u["user_id"]), sensitive);
+            }
+        }
+        //if the discourse user's ip was from a sensitive location, determined from the mapping file
+        public bool IsSensitiveUser(int discId)
+        {
+            return sensitiveUser[discId]; //just look up the mapping to see if they are sensitive or not.
+        }
+        //from the tables we have determine if an ip is sensitive or not
+        private bool IsSensitiveIP(string ipStr, ref List<KeyValuePair<BlockIP, bool>> blockSensitivities)
+        {
+            if (ipStr == "") //no need to check if not an actual ip
+                return false;
+
+            SimpleIP ip = new SimpleIP(ipStr); //note comparison operators are defined on ipStr
+
+            //find the element where the ip corresponds to that block, and return if sensitive or not
+            //note structure of blockSensitivities, Pair< Pair<ipStart, ipEnd>, isSensitive >
+            return blockSensitivities.First(r => r.Key.Key <= ip && ip <= r.Key.Value).Value;
         }
     }
 }
