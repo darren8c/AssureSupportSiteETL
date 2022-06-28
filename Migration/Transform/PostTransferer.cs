@@ -73,6 +73,10 @@ namespace SupportSiteETL.Migration.Transform
                 if (deleteCategory) //if something belongs to "Delete" don't add to q2a
                     continue;
 
+                if (anonymizer.IsSensitiveUser(int.Parse(topic["user_id"]))) //don't migrate any post made by a sensitive user.
+                    continue;
+
+
                 allPosts.AddRange( createPostsFromTopic(topic) );
                 //Console.WriteLine("Topic " + topic["id"] + " extracted");
             }
@@ -113,6 +117,8 @@ namespace SupportSiteETL.Migration.Transform
             }
             
             List<Q2APost> newPosts = replyIdMap.Values.ToList();
+
+            StripHiddenPosts(ref newPosts);
             anonymizer.AnonymizeThread(ref newPosts, dcPosts); //remove user names and avatars
 
             SetAnswer(ref newPosts); //go through the posts and select a best answer if possible
@@ -197,6 +203,20 @@ namespace SupportSiteETL.Migration.Transform
             posts = posts.OrderBy(p => p.postid).ToList(); //reorder by postid
         }
 
+        //get the list of posts that aren't hidden and don't have a parent post that is hidden.
+        private void StripHiddenPosts(ref List<Q2APost> posts)
+        {
+            bool cleanPass = false;
+            while(!cleanPass) //keep removing posts until we have a clean pass through, this should never actually take more than 3 passes
+            {
+                posts.RemoveAll(p => p.type.EndsWith("HIDDEN")); //remove any hidden posts
+                foreach (Q2APost post in posts) //mark any posts hidden if their parent was just deleted
+                    if (post.parentid != null && !posts.Exists(p => p.postid == post.parentid)) //no parent exists
+                        post.type += "_HIDDEN"; //make the post hidden
+                cleanPass = !posts.Exists(p => p.type.EndsWith("HIDDEN")); //clean if no remaining hidden posts
+            }
+        }
+
         private void SetBasicPostAttributes(ref Q2APost newPost, Topic topic, Post dcPost)
         {
             //Set the fields of the post
@@ -267,9 +287,14 @@ namespace SupportSiteETL.Migration.Transform
                         newPost.parentid = (int)replyIdMap[replyNum].parentid;
                 }
             }
-            //check if the post should be hidden
-            if (bool.Parse(dcPost["hidden"]) || bool.Parse(dcPost["user_deleted"]))
+            
+            //check if the post should be hidden, either deleted, was hidden before, or made by a user in a sensitive location.
+            int discId = -1; //default system user
+            if (dcPost["user_id"] != "") //not null user
+                discId = int.Parse(dcPost["user_id"]);
+            if ( bool.Parse(dcPost["hidden"]) || bool.Parse(dcPost["user_deleted"]) || anonymizer.IsSensitiveUser(discId))
                 newPost.type += "_HIDDEN"; //add hidden to the type, i.e. C_HIDDEN
+
         }
 
         //q2a has some constraints that discourse didn't

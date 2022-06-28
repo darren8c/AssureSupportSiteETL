@@ -27,6 +27,12 @@ namespace SupportSiteETL.Migration.Transform
             discourseUsers = extractor.GetDiscourseUsers();
         }
 
+        //if the discourse user's ip was from a sensitive location, uses a xml mapping file
+        public bool IsSensitiveUser(int discId)
+        {
+            return false;
+        }
+
 
         //from a given topic/thread remove all data that relates to anonymity, note at this time userIdMap should be set already
         public void AnonymizeThread(ref List<Q2APost> posts, List<DiscoursePost> postsD)
