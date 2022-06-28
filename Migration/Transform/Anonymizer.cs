@@ -46,21 +46,71 @@ namespace SupportSiteETL.Migration.Transform
             }
         }            
 
+
         //censor the words in the content
         private string CensorContent(string content, CensoredWords cw)
         {
-            //special characters in regular expression need to be replaced with \\, i.e. ? -> \?
-            char[] escapeChars = {'?', '*', '+', '|', '^', '$', '.', '\\', '[', ']', '(', ')', '{', '}' };
+            content = RemovePhone(content, cw); //remove phone numbers in the post
+            
             foreach(KeyValuePair<string, string> word in cw)
             {
-                string searchWord = word.Key;
-                foreach (char c in escapeChars) //some chars may be special chars in regex, replace so it works properly
-                    searchWord.Replace(c.ToString(), "\\" + c); //change to escape sequence
-                string searchTerm = @"(?i)\b" + searchWord + @"\b"; //any case version of the searchWord when it appears as a full word
+                string searchTerm = GetExpressionFromWord(word.Key); //any case version of the searchWord when it appears as a full word
                 content = Regex.Replace(content, searchTerm, word.Value); //swap the term out for it's replacement
             }
+
             return content;
         }
+        
+        //go from a search word i.e. "John" -> the regex expression search term
+        private string GetExpressionFromWord(string word)
+        {
+            //special characters in regular expression need to be replaced with \\, i.e. ? -> \?
+            char[] escapeChars = { '?', '*', '+', '|', '^', '$', '.', '\\', '[', ']', '(', ')', '{', '}' };
+            foreach (char c in escapeChars) //some chars may be special chars in regex, replace so it works properly
+                word.Replace(c.ToString(), "\\" + c); //change to escape sequence
+            return @"(?i)\b" + word + @"\b"; //any case version of the search term when it appears as a full word
+        }
+
+        //Remove phone numbers, must be their own "word" of 6-15 digits, can have spaces ()'s, hyphens or periods in between
+        //there could be many false positives (e.g. version numbers, dates, etc.) so we have to verify they are phone numbers
+        private string RemovePhone(string content, CensoredWords cw)
+        {
+            int windowSize = 50; //how many chars on each side of match to look for "phone"
+
+            List<string> numbersToRemove = new List<string>(); //a list of numbers to remove
+            
+            MatchCollection matches = Regex.Matches(content, @"\b(\d[\s-.\(\)]*){7,15}\b"); //every possible phone # match
+            foreach(Match match in matches)
+            {
+                if(match.Success) //a match, but must be verified before removal
+                {
+                    int matchLocation = match.Index; //location of the match
+                    //make sure start and end are in range to catch errors if match is near the end or beginning of text.
+                    int startIndex = Math.Max(0, matchLocation - windowSize);
+                    int endIndex = Math.Min(content.Length, matchLocation + windowSize + match.Length);
+                    string surroundingText = content.Substring(startIndex, endIndex - startIndex); // [ windowSize |match| windowSize ]
+
+
+                    //find if there is any sensitive info around the match in question
+                    //this includes phone related words (any case) is nearby the match or any censored words
+                    bool nearbyMatch = Regex.IsMatch(surroundingText, @"\b(?i)(phone|cell|tel)\b");
+                    foreach (KeyValuePair<string, string> word in cw) //check if any censored words appear nearby
+                    {
+                        if (nearbyMatch) //if we already found a match stop searching
+                            break;
+                        if(Regex.IsMatch(surroundingText, GetExpressionFromWord(word.Key)))
+                            nearbyMatch = true;
+                    }
+                    if (nearbyMatch) //the number appears to be a real phone number and should be removed
+                        numbersToRemove.Add(match.ToString()); //if we remove now it will mess up the index of the other matches, remove later           
+                }
+            }
+            foreach (string num in numbersToRemove) //go through each phone number that shows up and remove them
+                content = content.Replace(num, "[Phone Removed]");
+
+            return content;
+        }
+
 
         //generate a list of censored words based on the users in the thread
         private CensoredWords GetWordList(List<DiscoursePost> postsD)
@@ -80,16 +130,23 @@ namespace SupportSiteETL.Migration.Transform
                 //mapping from a censored word to the replacement (censored_word) -> replace_with
                 cw[dUser["email"]] = "[EMAIL REMOVED]";
                 cw[dUser["username"]] = q2aUser.handle;
-                cw[dUser["username_lower"]] = q2aUser.handle;
                 cw[$"@{dUser["username"]}"] = $"@{q2aUser.handle}"; //add @ versions as it is common to @ users, i.e. @john_doe
-                cw[$"@{dUser["username_lower"]}"] = $"@{q2aUser.handle}";
+
+
+                //for both the username and name, each piece is a censored word, i.e. for "John Doe" both "John" and "Doe" should be removed
+
+                List<string> names = SplitName(dUser["username"], discId); //split the usernames in parts and add the parts
+                if (names.Count > 0)
+                    cw[names[0]] = q2aUser.handle; //first name maps to handle
+                for (int i = 1; i < names.Count; i++)
+                    cw[names[i]] = "";
 
                 if (dUser["name"] == "") //skip censored words related to names if name is blank
                     continue;
 
                 cw[dUser["name"]] = q2aUser.handle; //name corresponding to the full name of the user
                 //add the different parts of the name, normally will be like {"John", "Doe"}, or {"Jane", "G.", "Doe"}
-                List<string> names = SplitName(dUser["name"], discId);
+                names = SplitName(dUser["name"], discId);
                 if(names.Count > 0)
                     cw[names[0]] = q2aUser.handle; //first name maps to handle
                 for(int i = 1; i < names.Count; i++)
@@ -111,7 +168,7 @@ namespace SupportSiteETL.Migration.Transform
             string part = "";
             //break in parts, split on spaces or on upper case
             //i.e. "Marco C. Polo" -> {"Marco", "C." "Polo"}, "GeorgeWashington" -> {"George", "Washington"}
-            char[] splitChars = { ' ', '_', '-', '(', ')', '[', ']', '{', '}' }; //characters to split on
+            char[] splitChars = { ' ', '_', '.', '-', '(', ')', '[', ']', '{', '}' }; //characters to split on
             foreach (char c in name)
             {
                 if (splitChars.Contains(c)) //split on space or similar chars
