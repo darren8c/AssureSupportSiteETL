@@ -14,10 +14,10 @@ using SupportSiteETL.Migration.Load;
 //testTransferUsers(); 
 //testTransferCategories();
 //testWordTables();
-//testQ2ADeleteData(); //delete all the entered site data
-//testTransferAll();
+testQ2ADeleteData(); //delete all the entered site data
+testTransferAll();
 
-testImageTransferer();
+//testImageTransferer();
 
 void testTransferAll() //transfer both users and posts
 {
