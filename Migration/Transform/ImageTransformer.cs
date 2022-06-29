@@ -26,10 +26,9 @@ namespace SupportSiteETL.Migration.Transform
             loader = new Loader();
             rand = new Random();
 
-            usedIds = extractor.GetQ2ABlobIds();
+            images = new List<ImageBlob>();
 
-            foreach (ulong id in usedIds)
-                Console.WriteLine(id);
+            usedIds = extractor.GetQ2ABlobIds();
         }
 
 
@@ -43,8 +42,10 @@ namespace SupportSiteETL.Migration.Transform
 
         public void Load() //stores all the new images in 
         {
+            Console.WriteLine("Loading images...");
             foreach (ImageBlob image in images)
                 loader.AddImage(image);
+            Console.WriteLine("Images loaded!");
         }
 
         //go through the post and create the necessary images and modify the image content
@@ -83,13 +84,13 @@ namespace SupportSiteETL.Migration.Transform
                     string text = heightSearch.ToString(); //i.e. height="374"
                     text = text.Trim('\"'); //i.e. height="374
                     text = text.Split('\"').Last(); //i.e. 374
-                    width = int.Parse(text);
+                    height = int.Parse(text);
                 }
                 //specify width and height if they are known
                 if (width != null)
                     newTag.Append($" width=\"{width}\" ");
                 if (height != null)
-                    newTag.Append($" width=\"{width}\" ");
+                    newTag.Append($" height=\"{height}\" ");
                 newTag.Append(">"); //close the tag
 
                 content = content.Replace(m.ToString(), newTag.ToString()); //swap out old discourse image tag for new q2a blob image tag
@@ -136,13 +137,22 @@ namespace SupportSiteETL.Migration.Transform
         //from something like \uploads\default\0\2x\... return the binary data from the file
         public byte[] GetImageData(string path)
         {
-            byte[]? data = null;
+            byte[] data;
             string rootPath = System.Configuration.ConfigurationManager.ConnectionStrings["uploads"].ConnectionString;
-            using (FileStream fs = new FileStream(String.Concat(rootPath, path), FileMode.Open, FileAccess.Read))
+
+            try
             {
-                data = new byte[fs.Length];
-                fs.Read(data, 0, data.Length);
+                using (FileStream fs = new FileStream(String.Concat(rootPath, path), FileMode.Open, FileAccess.Read)) //attempt to read file
+                {
+                    data = new byte[fs.Length];
+                    fs.Read(data, 0, data.Length);
+                }
             }
+            catch (Exception) //couldn't read file, make it an empty array
+            {
+                data = new byte[0];
+            }
+
             return data;
         }
     }
