@@ -81,6 +81,35 @@ namespace SupportSiteETL.Migration.Extract
             return postid;
         }
 
+        //Get the current list of q2a blob ids that are being used
+        public List<UInt64> GetQ2ABlobIds()
+        {
+            string getIdsCommand = "SELECT blobid from qa_blobs";
+            List<UInt64> ids = new List<UInt64>(); //list id's in the system
+
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                int postNum = 0;
+                using (MySqlCommand cmd = new MySqlCommand(getIdsCommand, conn)) //count number of posts
+                {
+                    using (MySqlDataReader reader = cmd.ExecuteReader()) //executes query
+                    {
+                        while(reader.Read()) //read the ids into the list
+                            ids.Add(reader.GetUInt64(0)); //only one column, which contains blob id
+                    }
+                    
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error retrieving post count: " + ex.Message);
+                throw;
+            }
+            return ids;
+        }
+
 
         /// <summary>
         /// Gets all of the users from the Q2A database
