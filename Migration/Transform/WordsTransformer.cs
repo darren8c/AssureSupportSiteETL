@@ -88,7 +88,7 @@ namespace SupportSiteETL.Migration.Transform
             wordDataMap = new Dictionary<int, WordEntry>();
         }
 
-        //note that words transferer has no load function, since it essentially only updates the tables after the rest of the ETL is done
+        //note that words transferer has no extract function, since it essentially only updates the tables after the rest of the ETL is done
 
         //load/update the tables on q2a so searching works, this should be done last essentially in the ETL
         public void Load()

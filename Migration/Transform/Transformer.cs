@@ -15,6 +15,7 @@ namespace SupportSiteETL.Migration.Transform
         CategoryTransformer ct;
         PostTransformer pt;
         WordsTransformer wt;
+        ImageTransformer it;
         Loader loader;
 
         Anonymizer anon;
@@ -25,6 +26,7 @@ namespace SupportSiteETL.Migration.Transform
             ct = new CategoryTransformer();
             pt = new PostTransformer();
             wt = new WordsTransformer();
+            it = new ImageTransformer();
             loader = new Loader();
 
             anon = new Anonymizer();
@@ -41,12 +43,15 @@ namespace SupportSiteETL.Migration.Transform
 
             ct.Extract();
 
+
             //pass some key information to the different transformers
             pt.oldToNewId = ut.oldToNewId;
             pt.oldToNewCatId = ct.catIdMap;
             pt.devUserIds = ut.devUsers;
 
             pt.Extract(); //the post extraction information from the other classes
+            
+            it.Extract(ref pt.allPosts); //change all the images in the posts, changes will be reflected in the post transferer
         }
 
         public void Load()
@@ -54,9 +59,11 @@ namespace SupportSiteETL.Migration.Transform
             ut.Load(); //add the users to q2a
             ct.Load(); //add categories to q2a
             pt.Load(); //add posts to q2a
+            it.Load(); //add images to q2a
 
             ct.updateCategoryCounts(); //update the category count now that post data is loaded
             wt.Load(); //update all the word tables
+            
             loader.UpdateSiteStats(); //update some key values in qa_stats
 
         }

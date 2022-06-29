@@ -27,7 +27,7 @@ namespace SupportSiteETL.Migration.Transform
 
         private uint currPostId;
 
-        private List<Q2APost> allPosts;
+        public List<Q2APost> allPosts;
 
         private Extractor extractor;
         private Loader loader;

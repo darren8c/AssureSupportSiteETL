@@ -578,6 +578,38 @@ namespace SupportSiteETL.Migration.Load
             }
             conn.Close();
         }
+
+        //add the image blob to the table, not done in batches as byte[] will be quite long
+        public void AddImage(ImageBlob data)
+        {
+
+            //command to add a new category
+            string addImageCommand = "INSERT INTO qa_blobs (blobid, format, content, filename, userid, cookieid, created) " +
+                "VALUES (@blobid, @format, @content, @filename, @userid, @cookieid, @created)";
+
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand(addImageCommand, conn)) //to qa_blobs
+                {
+                    cmd.Parameters.AddWithValue("@blobid", data.blobid);
+                    cmd.Parameters.AddWithValue("@format", data.format);
+                    cmd.Parameters.AddWithValue("@content", data.content);
+                    cmd.Parameters.AddWithValue("@filename", data.filename);
+                    cmd.Parameters.AddWithValue("@userid", data.userid);
+                    cmd.Parameters.AddWithValue("@cookieid", data.cookieid);
+                    cmd.Parameters.AddWithValue("@created", data.created);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error adding new image: " + ex.Message);
+                throw;
+            }
+            conn.Close();
+        }
     }
 
 

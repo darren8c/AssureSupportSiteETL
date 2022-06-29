@@ -109,7 +109,7 @@ namespace SupportSiteETL.Migration.Load
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error when deleteing posts: " + ex);
+                Console.WriteLine("Error when deleteing posts: " + ex.Message);
                 throw;
             }
             conn.Close();
@@ -129,7 +129,7 @@ namespace SupportSiteETL.Migration.Load
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error when deleteing categories: " + ex);
+                Console.WriteLine("Error when deleteing categories: " + ex.Message);
             }
             conn.Close();
 
@@ -163,7 +163,29 @@ namespace SupportSiteETL.Migration.Load
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error when deleteing word tables: " + ex);
+                Console.WriteLine("Error when deleteing word tables: " + ex.Message);
+                throw;
+            }
+            conn.Close();
+        }
+
+        //delete the images migrated over, these are marked with Discourse_ at the beginning of the filename
+        public void DeleteImages()
+        {
+            string deleteCommand = "DELETE FROM qa_blobs where filename like 'Discourse_%'"; //delete images where the fileanames starts with Discourse_
+
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand(deleteCommand, conn)) //remove all data in table
+                {
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error when deleteing images: " + ex.Message);
                 throw;
             }
             conn.Close();
