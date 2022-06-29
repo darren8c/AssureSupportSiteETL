@@ -23,7 +23,9 @@ namespace SupportSiteETL.Migration.Transform
         public Dictionary<int, int> userIdMap; //go from discourse to q2a user id, WARNING this is set by Transferer sometime after the constructor
 
         private Dictionary<int, bool> sensitiveUser; //go from discourse id to sensitive region or not
-        
+        List<KeyValuePair<BlockIP, bool>> blockSensitivities; //stores ip ranges and whether they are a sensitive region or not
+
+
         private Extractor extractor;
 
         public Anonymizer()
@@ -32,7 +34,7 @@ namespace SupportSiteETL.Migration.Transform
             discourseUsers = extractor.GetDiscourseUsers();
 
             Console.WriteLine("Determining sensitive users...");
-            PopulateSensitiveList(); //sets sensitiveUser from the files
+            PopulateSensitiveList(); //sets sensitiveUser and blockSensitivities from the files
             Console.WriteLine("Sensitive users identified!");
         }
 
@@ -261,7 +263,7 @@ namespace SupportSiteETL.Migration.Transform
                 locationMapper.Add(data[0], data[1] == "blocked");
             }
 
-            List<KeyValuePair<BlockIP, bool>>  blockSensitivities = new List<KeyValuePair<BlockIP, bool>>();
+            blockSensitivities = new List<KeyValuePair<BlockIP, bool>>();
             //fill in from look up table
             lines = File.ReadLines("Resources/LookupIP.csv");
             foreach (string line in lines)
@@ -288,7 +290,7 @@ namespace SupportSiteETL.Migration.Transform
                 string ip1 = u["ip_address"]; //first ip to check
                 string ip2 = u["registration_ip_address"]; //second ip to check
 
-                bool sensitive = IsSensitiveIP(ip1, ref blockSensitivities) || IsSensitiveIP(ip2, ref blockSensitivities);
+                bool sensitive = IsSensitiveIP(ip1) || IsSensitiveIP(ip2);
                 sensitiveUser.Add(int.Parse(u["user_id"]), sensitive);
             }
         }
@@ -298,7 +300,7 @@ namespace SupportSiteETL.Migration.Transform
             return sensitiveUser[discId]; //just look up the mapping to see if they are sensitive or not.
         }
         //from the tables we have determine if an ip is sensitive or not
-        private bool IsSensitiveIP(string ipStr, ref List<KeyValuePair<BlockIP, bool>> blockSensitivities)
+        private bool IsSensitiveIP(string ipStr)
         {
             if (ipStr == "") //no need to check if not an actual ip
                 return false;
@@ -307,7 +309,21 @@ namespace SupportSiteETL.Migration.Transform
 
             //find the element where the ip corresponds to that block, and return if sensitive or not
             //note structure of blockSensitivities, Pair< Pair<ipStart, ipEnd>, isSensitive >
-            return blockSensitivities.First(r => r.Key.Key <= ip && ip <= r.Key.Value).Value;
+            //list is long, and linear lookups for 1000 users is slow, so use binary search
+            int start = 0;
+            int end = blockSensitivities.Count; //note end is not inclusive
+            while (start != end)
+            {
+                int mid = (start + end) / 2;
+                if (blockSensitivities[mid].Key.Key <= ip && ip <= blockSensitivities[mid].Key.Value) //valid match
+                    return blockSensitivities[mid].Value; //return whether sensitive or not
+                else if (ip < blockSensitivities[mid].Key.Key) //too high, eliminate last half
+                    end = mid;
+                else //too low, eliminate first half
+                    start = mid + 1;
+            }
+            //element wasn't in list, this should never happen, default to not sensitive
+            return false;
         }
     }
 }

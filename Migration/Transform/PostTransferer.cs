@@ -118,7 +118,7 @@ namespace SupportSiteETL.Migration.Transform
             
             List<Q2APost> newPosts = replyIdMap.Values.ToList();
 
-            StripHiddenPosts(ref newPosts);
+            StripHiddenPosts(ref newPosts); //remove posts that are hidden or have a parent this is hidden.
             anonymizer.AnonymizeThread(ref newPosts, dcPosts); //remove user names and avatars
 
             SetAnswer(ref newPosts); //go through the posts and select a best answer if possible
