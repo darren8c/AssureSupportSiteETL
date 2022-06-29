@@ -48,11 +48,13 @@ void testQ2ADeleteData() //deletes users, categories, and all posts
     Console.WriteLine("Deleting existing site data...");
 
     deleter.DeletePosts(); //note this deletes word/search table data as well
-    Console.WriteLine("Posts Deleted!");
+    Console.WriteLine("Posts deleted!");
     deleter.DeleteCategories();
-    Console.WriteLine("Categories Deleted!");
+    Console.WriteLine("Categories deleted!");
     deleter.DeleteUsers();
-    Console.WriteLine("(non super-admin) Users Deleted!");
+    Console.WriteLine("(non super-admin) Users deleted!");
+    deleter.DeleteImages();
+    Console.WriteLine("Migrated images deleted!");
 
     Console.WriteLine("Existing site data deleted!\n");
 

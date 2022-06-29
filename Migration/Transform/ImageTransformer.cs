@@ -19,8 +19,6 @@ namespace SupportSiteETL.Migration.Transform
 
         private List<ulong> usedIds; //blob ids currently in use
         private List<ImageBlob> images; //images to be migrated to q2a
-        public List<Q2APost> allPosts; //used for finding images, filtering out image content and replacing them with new urls
-
 
         public ImageTransformer()
         {
@@ -35,29 +33,23 @@ namespace SupportSiteETL.Migration.Transform
         }
 
 
-        public void Extract(List<Q2APost> posts) //gets all the posts, removes links and creates the necessary images
+        public void Extract(ref List<Q2APost> posts) //gets all the posts, removes links and creates the necessary images
         {
-            allPosts = posts; //copy over the posts
-
-            foreach (Q2APost p in allPosts)
-            {
+            Console.WriteLine("Migrating post images...");
+            foreach (Q2APost p in posts) //transform the data in every post, note posts is passed by reference
                 p.content = TransformPost(p);
-            }
+            Console.WriteLine("Post images migrated!");
         }
 
         public void Load() //stores all the new images in 
         {
-
+            foreach (ImageBlob image in images)
+                loader.AddImage(image);
         }
 
         //go through the post and create the necessary images and modify the image content
         public string TransformPost(Q2APost p)
         {
-            // <img[^>]*(src=")(https:\/\/support.paratext.org)?(\/uploads)[^>]*>
-            // width="\d*"
-            // height="\d*"
-            // /uploads[^"]*
-
             string content = p.content;
             //find all paratext uploads and migrate them over
             //the match looks for an img that either is a paratext upload, like src="https://support.paratext.org/uploads... or src="/uploads...
@@ -65,30 +57,42 @@ namespace SupportSiteETL.Migration.Transform
             while(Regex.IsMatch(content, @"<img[^>]*(src="")(https:\/\/support.paratext.org)?(\/uploads)[^>]*>")) //keep migrating until no more matches
             {
                 Match m = Regex.Match(content, @"<img[^>]*(src="")(https:\/\/support.paratext.org)?(\/uploads)[^>]*>");
-                
                 string path = Regex.Match(m.ToString(), @"/uploads[^""]*").ToString(); //i.e. /uploads/default/18492048423.png
 
+                //create the new image from the given data and add it to the list
+                ImageBlob newImage = CreateImage(path, p);
+                images.Add(newImage);
 
+                //create the new image tag, with the src (and possibly height and width) attributes
                 StringBuilder newTag = new StringBuilder();
-                newTag.Append("<img src=");
-
+                newTag.Append($"<img src=\"/?qa=blob&qa_blobid={newImage.blobid}\" ");
                 //if the original tag specified width and height, do the same
                 int? width = null;
                 int? height = null;
                 Match widthSearch = Regex.Match(m.ToString(), @"width=""\d*""");
-                if(widthSearch.Success)
+                Match heightSearch = Regex.Match(m.ToString(), @"height=""\d*""");
+                if (widthSearch.Success)
                 {
                     string text = widthSearch.ToString(); //i.e. width="374"
                     text = text.Trim('\"'); //i.e. width="374
                     text = text.Split('\"').Last(); //i.e. 374
                     width = int.Parse(text); 
                 }
-
+                if (heightSearch.Success)
+                {
+                    string text = heightSearch.ToString(); //i.e. height="374"
+                    text = text.Trim('\"'); //i.e. height="374
+                    text = text.Split('\"').Last(); //i.e. 374
+                    width = int.Parse(text);
+                }
                 //specify width and height if they are known
                 if (width != null)
                     newTag.Append($" width=\"{width}\" ");
                 if (height != null)
                     newTag.Append($" width=\"{width}\" ");
+                newTag.Append(">"); //close the tag
+
+                content = content.Replace(m.ToString(), newTag.ToString()); //swap out old discourse image tag for new q2a blob image tag
             }
 
             return content;
@@ -100,17 +104,17 @@ namespace SupportSiteETL.Migration.Transform
             url.Replace(@"/", @"\"); //make sure we are using the right slash for file directories
             string fileName = url.Split(@"\").Last(); //get the last portion i.e. filename.png
 
-            ImageBlob newImage = new ImageBlob();
-            newImage.blobid = GenNewId();
-            newImage.filename = "Discourse_" + url.Split(@"\").Last(); //add "Discourse_" so we can easily determine migrated posts during deletion
-            newImage.format = url.Split(".").Last(); //i.e. png
-            
-            newImage.created = p.created;
-            newImage.userid = p.userid;
+            ImageBlob newI = new ImageBlob();
+            newI.blobid = GenNewId();
+            newI.format = url.Split(".").Last(); //i.e. png
+            newI.filename = $"Discourse_{newI.blobid}.{newI.format}"; //add "Discourse_" so we can easily determine migrated posts during deletion
 
-            newImage.content = GetImageData(url);
+            newI.created = p.created;
+            newI.userid = p.userid;
 
-            return newImage;
+            newI.content = GetImageData(url);
+
+            return newI;
         }
 
         //generate a new unique blobid
