@@ -132,8 +132,13 @@ namespace SupportSiteETL.Migration.Transform
         //from something like \uploads\default\0\2x\... return the binary data from the file
         public byte[] GetImageData(string path)
         {
-            byte[] data = null;
-
+            byte[]? data = null;
+            string rootPath = System.Configuration.ConfigurationManager.ConnectionStrings["uploads"].ConnectionString;
+            using (FileStream fs = new FileStream(String.Concat(rootPath, path), FileMode.Open, FileAccess.Read))
+            {
+                data = new byte[fs.Length];
+                fs.Read(data, 0, data.Length);
+            }
             return data;
         }
     }
