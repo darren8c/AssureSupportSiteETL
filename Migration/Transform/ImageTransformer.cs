@@ -151,7 +151,7 @@ namespace SupportSiteETL.Migration.Transform
             catch (Exception) //couldn't read file, make it an empty array
             {
                 data = new byte[0];
-                Console.WriteLine($"Couldn't find: {rootPath} {path}");
+                //Console.WriteLine($"Couldn't find: {rootPath} {path}");
             }
 
             return data;

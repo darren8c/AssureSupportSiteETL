@@ -289,17 +289,23 @@ namespace SupportSiteETL.Migration.Transform
         private List<string> ParseText(string title)
         {
             List<string> words = new List<string>();
+            string altChars = "@#$_’"; //alternative chars (besides letteers and nums) that can be a part of a word
             string currWord = "";
             foreach (char c in title)
             {
                 if (char.IsLetter(c)) //append lowercase version
                     currWord = currWord + char.ToLower(c);
-                else if (char.IsDigit(c))
+                else if (char.IsDigit(c) || altChars.Contains(c)) //digit or @#$&_
                     currWord = currWord + c;
-                else //on split letter
+                else //on split letter e.g. space ! . ,
                 {
                     if (currWord.Length > 0) //only add if non empty
                         words.Add(currWord);
+                    currWord = ""; //reset
+                }
+                if(currWord.Length == 80) //words can only be 80 digits long, split here as well
+                {
+                    words.Add(currWord);
                     currWord = ""; //reset
                 }
             }

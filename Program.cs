@@ -24,6 +24,7 @@ void testTransferAll() //transfer both users and posts
     Console.WriteLine("Migrating data...");
     Transformer transferer = new Transformer();
     transferer.Extract();
+    Console.WriteLine(); //spacer between extra
     transferer.Load();
     Console.WriteLine("Data migrated!");
 }
@@ -65,6 +66,7 @@ void testTransferCategories()
 {
     CategoryTransformer cTran = new CategoryTransformer();
     cTran.Extract();
+    Console.WriteLine(" "); //spacer between extracting and loading
     cTran.Load();
 }
 
