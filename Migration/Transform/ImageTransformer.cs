@@ -102,7 +102,7 @@ namespace SupportSiteETL.Migration.Transform
 
         public ImageBlob CreateImage(string url, Q2APost p)
         {
-            url.Replace(@"/", @"\"); //make sure we are using the right slash for file directories
+            url = url.Replace(@"/", @"\"); //make sure we are using the right slash for file directories
             string fileName = url.Split(@"\").Last(); //get the last portion i.e. filename.png
 
             ImageBlob newI = new ImageBlob();
@@ -151,6 +151,7 @@ namespace SupportSiteETL.Migration.Transform
             catch (Exception) //couldn't read file, make it an empty array
             {
                 data = new byte[0];
+                Console.WriteLine($"Couldn't find: {rootPath} {path}");
             }
 
             return data;

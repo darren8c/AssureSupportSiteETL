@@ -78,7 +78,9 @@ namespace SupportSiteETL.Migration.Transform
             char[] escapeChars = { '?', '*', '+', '|', '^', '$', '.', '\\', '[', ']', '(', ')', '{', '}' };
             foreach (char c in escapeChars) //some chars may be special chars in regex, replace so it works properly
                 word.Replace(c.ToString(), "\\" + c); //change to escape sequence
-            return @"(?i)\b" + word + @"\b"; //any case version of the search term when it appears as a full word
+            //note (?<!\<) and (?!\>) lookbehind/ahead and makes sure < > is not where the word break starts/ends
+            //this avoids removing a tag, i.e. <p ... or </p>
+            return @"(?i)\b(?<!\<)" + word + @"(?!\>)\b"; //any case version of the search term when it appears as a full word
         }
 
         //Remove phone numbers, must be their own "word" of 6-15 digits, can have spaces ()'s, hyphens or periods in between
