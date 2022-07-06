@@ -111,6 +111,11 @@ namespace SupportSiteETL.Migration.Transform
                     text = text.Trim('\"'); //i.e. class="emoji
                     alt = text.Split('\"').Last(); //i.e. emoji
                 }
+
+                //ported over emojis are often too large, if it is an emoji class and size isn't set, scale down
+                if(classType != null && (classType.Contains("emoji") || width == null || height == null) ) //emoji and sizes not set
+                    width = 20;
+
                 //specify width and height if they are known
                 if (width != null)
                     newTag.Append($" width=\"{width}\" ");
