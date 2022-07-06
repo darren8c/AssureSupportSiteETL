@@ -38,6 +38,8 @@ void testWordTables()
 void testImageTransferer()
 {
     ImageTransformer imt = new ImageTransformer();
+    var img = imt.GetImageData(@"/uploads/default/original/2X/3/3fa543bb6af71ee512fce3a2c8d19401efa585d7.png");
+    Console.WriteLine(img.Length);
 }
 
 
