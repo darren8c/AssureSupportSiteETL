@@ -14,6 +14,7 @@ namespace SupportSiteETL.Migration.Transform.Models
         public DateTime created_at;
         public DateTime loggedin;
         public string email = "";
+        public string discourseEmail = "";
         public int level = 0;
         public int flags = 0;
         public int wallposts = 0;

@@ -20,6 +20,33 @@ namespace SupportSiteETL.Migration.Load
             loader = new Loader();
         }
 
+        //delete from the table, optionally specifiy an error message
+        //deletefrom can also specify a where parameter
+        ///i.e.: DELETE FROM qa_users WHERE userid!=1, deleteFrom: qa_users where userid!=1 
+        public void DeleteFromTable(string deleteFrom, string? errorMessage=null)
+        {
+            string deleteCommand = "DELETE FROM " + deleteFrom; //delete from specified table
+
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand(deleteCommand, conn)) //remove all data in table
+                {
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                if (errorMessage != null) //argument specified 
+                    Console.WriteLine($"{errorMessage}: {ex.Message}");
+                else //default error message
+                    Console.WriteLine($"Error when deleteing from {deleteFrom}: {ex.Message}");
+                throw;
+            }
+            conn.Close();
+        }
+
         /// <summary>
         /// Deletes all users in the Q2A database EXCEPT the Super Admin (first account created)
         /// This removes the user's information from the following tables:
@@ -28,20 +55,26 @@ namespace SupportSiteETL.Migration.Load
         /// <returns>
         /// The number of users deleted
         /// </returns>
-        public int DeleteUsers()
+        public void DeleteUsers()
         {
-            int rowsAffected = 0;
-            int result = 0;
+            //all users like anon123456, any other users will be kept
+            var usersToDelete = q2a.ExecuteQuery("SELECT userid FROM qa_users where handle like 'anon______'");
 
-            // We fetch [0] because there should only be one super-admin
-            var superAdmin = q2a.ExecuteQuery("SELECT userid FROM qa_users WHERE level = '120'")[0];
-            string superAdminId = superAdmin["userid"];
+            if (usersToDelete.Count == 0) //no users to delete, return
+                return;
+
+            //looks like "where userid in (2,3,4,5,...)
+            StringBuilder deleteSpecifier = new StringBuilder(" where userid in ( ");
+            for (int i = 0; i + 1 < usersToDelete.Count; i++) //all but the last
+                deleteSpecifier.Append(usersToDelete[i]["userid"] + ", ");
+            deleteSpecifier.Append(usersToDelete.Last()["userid"] + ")"); //close, e.g. ... 853, 854)
+            string deleteUserRange = deleteSpecifier.ToString();
+
 
             // All tables to delete the user from
             string[] tablesToDeleteFrom = {
                 "qa_userevents",
                 "qa_userfavorites",
-                // "qa_userfields", // This doesn't contain any user-specific information
                 "qa_userlevels",
                 "qa_userlimits",
                 "qa_userlogins",
@@ -51,27 +84,16 @@ namespace SupportSiteETL.Migration.Load
                 "qa_userprofile",
                 "qa_users",
                 "qa_uservotes",
+                // - "qa_userfields", // This doesn't contain any user-specific information
             };
 
-            // Execute a delete statement for each table, keeping the super-admin
+            // Execute a delete statement for each table, keeping the non ported over users
             foreach (string table in tablesToDeleteFrom)
-            {
-                string sql = string.Format("DELETE FROM {0} WHERE userid <> {1};", table, superAdminId);
-                result = q2a.ExecuteUpdate(sql);
-                rowsAffected += result;
-
-                //Console.WriteLine(string.Format("Deleted {0} rows from {1}", result, table));
-            }
-
+                DeleteFromTable(table + deleteUserRange, "Error deleting from " + table);
             // Separate query because the ID field is named different in this table
-            string sharedevents = string.Format("DELETE FROM qa_sharedevents WHERE lastuserid <> {0};", superAdminId);
-            result = q2a.ExecuteUpdate(sharedevents);
-            //Console.WriteLine(string.Format("Deleted {0} rows from qa_sharedevents", result));
+            DeleteFromTable("qa_sharedevents" + deleteUserRange.Replace("userid", "lastuserid"), "Error deleting from qa_sharedevents");
 
             loader.UpdateSiteStats(); //update settings table
-
-            // Compute the number of users deleted
-            return rowsAffected;
         }
 
 
@@ -87,53 +109,16 @@ namespace SupportSiteETL.Migration.Load
                 "qa_uservotes",
                 "qa_words"
             };
-
-            MySqlConnection conn = q2a.retrieveConnection();
-            conn.Open();
-            try
-            {
-                foreach(string table in tableList) //clear each table
-                {
-                    using (MySqlCommand cmd = new MySqlCommand("DELETE FROM " + table, conn)) //remove all data in table
-                    {
-                        cmd.ExecuteNonQuery();
-                    }
-                    //Console.WriteLine("Deleted data from " + table);
-                }
-                //deleting from qa_posts is more difficult because foreign key constraints
-                string postDeleteCommand = "DELETE FROM qa_posts ORDER BY postid DESC"; //delete in an order to not violate contraints
-                using (MySqlCommand cmd = new MySqlCommand(postDeleteCommand, conn))
-                {
-                    cmd.ExecuteNonQuery();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error when deleteing posts: " + ex.Message);
-                throw;
-            }
-            conn.Close();
+            foreach (string table in tableList)
+                DeleteFromTable(table);
+            //deleting from qa_posts is more difficult because foreign key constraints
+            DeleteFromTable("qa_posts ORDER BY postid DESC", "Error deleting posts");
         }
 
         //remove the categories table data
         public void DeleteCategories()
         {
-            MySqlConnection conn = q2a.retrieveConnection();
-            conn.Open();
-            try
-            {
-                using (MySqlCommand cmd = new MySqlCommand("DELETE FROM qa_categories", conn)) //removes table but not field names
-                {
-                    cmd.ExecuteNonQuery();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error when deleteing categories: " + ex.Message);
-            }
-            conn.Close();
-
-            string sql = "DELETE FROM qa_posts";
+            DeleteFromTable("qa_categories");
         }
 
         //remove all the entries in the tables related to words and searching
@@ -147,45 +132,34 @@ namespace SupportSiteETL.Migration.Load
                 "qa_posttags",
                 "qa_words",
             };
-
-            MySqlConnection conn = q2a.retrieveConnection();
-            conn.Open();
-            try
-            {
-                foreach (string table in tableList) //clear each table
-                {
-                    using (MySqlCommand cmd = new MySqlCommand("DELETE FROM " + table, conn)) //remove all data in table
-                    {
-                        cmd.ExecuteNonQuery();
-                    }
-                    //Console.WriteLine("Deleted data from " + table);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error when deleteing word tables: " + ex.Message);
-                throw;
-            }
-            conn.Close();
+            foreach (string table in tableList)
+                DeleteFromTable(table);
         }
 
         //delete the images migrated over, these are marked with Discourse_ at the beginning of the filename
         public void DeleteImages()
         {
-            string deleteCommand = "DELETE FROM qa_blobs where filename like 'Discourse_%'"; //delete images where the fileanames starts with Discourse_
+            //delete images where the fileanames starts with Discourse_
+            DeleteFromTable("qa_blobs where filename like 'Discourse_%'", "Error deleting images");
+        }
+
+        //delete data from qa_accountreclaim and the table itself
+        public void DeleteAccountReclaim()
+        {
+            string deleteCommand = "DROP TABLE IF EXISTS qa_accountreclaim"; //delete the table
 
             MySqlConnection conn = q2a.retrieveConnection();
             conn.Open();
             try
             {
-                using (MySqlCommand cmd = new MySqlCommand(deleteCommand, conn)) //remove all data in table
+                using (MySqlCommand cmd = new MySqlCommand(deleteCommand, conn))
                 {
                     cmd.ExecuteNonQuery();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error when deleteing images: " + ex.Message);
+                Console.WriteLine("Error when deleteing qa_accountreclaim: " + ex.Message);
                 throw;
             }
             conn.Close();

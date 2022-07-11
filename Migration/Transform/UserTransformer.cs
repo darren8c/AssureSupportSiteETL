@@ -130,6 +130,8 @@ namespace SupportSiteETL.Migration.Transform
             newUser.loggedin = DateTime.Now;
             newUser.email = newUser.handle + "@example.com"; //just a default email
 
+            newUser.discourseEmail = dUser["email"]; //email from discourse
+
             newUser.level = 0; //default user
             if (discourseLookupTable.ContainsKey(dUserId)) //check for a mapping
                 newUser.level = getRoleMap(discourseLookupTable[dUserId]); //oldId -> newRole -> roleLevel#

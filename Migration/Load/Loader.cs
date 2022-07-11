@@ -22,7 +22,7 @@ namespace SupportSiteETL.Migration.Load
         {
             q2a = new Q2AConnection();
         }
-        
+
         //updates the stats on the bottom of the site
         //includes
         //cache_userpointscount # of users
@@ -102,7 +102,7 @@ namespace SupportSiteETL.Migration.Load
 
         //add user data to all the different tables given user data, Use batch inserting for much faster write speed
         //basically the commands look something like INSERT INTO table (column names) VALUES (row1), (row2) ... (rowBatchSize)
-        public void AddUsers(List<Q2AUser> data, int batchSize=300)
+        public void AddUsers(List<Q2AUser> data, int batchSize = 300)
         {
             // Queries to insert users
             string userCommand = "INSERT INTO qa_users (userid, created, createip, loggedin, loginip, email, handle, level, flags, wallposts) VALUES ";
@@ -125,14 +125,14 @@ namespace SupportSiteETL.Migration.Load
                     StringBuilder profileCommandF = new StringBuilder(profileCommand);
 
                     var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
-                    foreach(var entry in currentBatch) //create insert commands
+                    foreach (var entry in currentBatch) //create insert commands
                     {
                         string id = entry.userId.ToString(); //appended to each parameter (id is unique for every entry)
 
                         userCommandF.Append($"(@userid{id}, @created{id}, @createip{id}, @loggedin{id}, @loginip{id}, @email{id}, @handle{id}, " +
                                             $"@level{id}, @flags{id}, @wallposts{id}),");
                         pointCommandF.Append($"(@userid{id}, @points{id}, @qposts{id}, @qupvotes{id}, @qvoteds{id}, @upvoteds{id}),");
-                        
+
                         profileCommandF.Append($"(@useridA{id}, @titleA{id}, @contentA{id}),");
                         profileCommandF.Append($"(@useridB{id}, @titleB{id}, @contentB{id}),");
                         profileCommandF.Append($"(@useridC{id}, @titleC{id}, @contentC{id}),");
@@ -148,16 +148,16 @@ namespace SupportSiteETL.Migration.Load
                         foreach (var entry in currentBatch) //fill in the entries
                         {
                             string id = entry.userId.ToString(); //appended to each parameter (id is unique for every entry)
-                            cmd.Parameters.AddWithValue($"@userid{id}",     entry.userId);
-                            cmd.Parameters.AddWithValue($"@created{id}",    entry.created_at);
-                            cmd.Parameters.AddWithValue($"@createip{id}",   "");
-                            cmd.Parameters.AddWithValue($"@loggedin{id}",   entry.loggedin);
-                            cmd.Parameters.AddWithValue($"@loginip{id}",    "");
-                            cmd.Parameters.AddWithValue($"@email{id}",      entry.email);
-                            cmd.Parameters.AddWithValue($"@handle{id}",     entry.handle);
-                            cmd.Parameters.AddWithValue($"@level{id}",      entry.level);
-                            cmd.Parameters.AddWithValue($"@flags{id}",      entry.flags);
-                            cmd.Parameters.AddWithValue($"@wallposts{id}",  entry.wallposts);
+                            cmd.Parameters.AddWithValue($"@userid{id}", entry.userId);
+                            cmd.Parameters.AddWithValue($"@created{id}", entry.created_at);
+                            cmd.Parameters.AddWithValue($"@createip{id}", "");
+                            cmd.Parameters.AddWithValue($"@loggedin{id}", entry.loggedin);
+                            cmd.Parameters.AddWithValue($"@loginip{id}", "");
+                            cmd.Parameters.AddWithValue($"@email{id}", entry.email);
+                            cmd.Parameters.AddWithValue($"@handle{id}", entry.handle);
+                            cmd.Parameters.AddWithValue($"@level{id}", entry.level);
+                            cmd.Parameters.AddWithValue($"@flags{id}", entry.flags);
+                            cmd.Parameters.AddWithValue($"@wallposts{id}", entry.wallposts);
                         }
                         cmd.ExecuteNonQuery();
                     }
@@ -166,12 +166,12 @@ namespace SupportSiteETL.Migration.Load
                         foreach (var entry in currentBatch) //fill in the entries
                         {
                             string id = entry.userId.ToString(); //appended to each parameter (id is unique for every entry)
-                            cmd.Parameters.AddWithValue($"@userid{id}",     entry.userId);
-                            cmd.Parameters.AddWithValue($"@qposts{id}",     entry.qposts);
-                            cmd.Parameters.AddWithValue($"@qupvotes{id}",   entry.qupvotes);
-                            cmd.Parameters.AddWithValue($"@qvoteds{id}",    entry.qvoteds);
-                            cmd.Parameters.AddWithValue($"@upvoteds{id}",   entry.upvoteds);
-                            cmd.Parameters.AddWithValue($"@points{id}",     entry.points);
+                            cmd.Parameters.AddWithValue($"@userid{id}", entry.userId);
+                            cmd.Parameters.AddWithValue($"@qposts{id}", entry.qposts);
+                            cmd.Parameters.AddWithValue($"@qupvotes{id}", entry.qupvotes);
+                            cmd.Parameters.AddWithValue($"@qvoteds{id}", entry.qvoteds);
+                            cmd.Parameters.AddWithValue($"@upvoteds{id}", entry.upvoteds);
+                            cmd.Parameters.AddWithValue($"@points{id}", entry.points);
                         }
                         cmd.ExecuteNonQuery();
                     }
@@ -181,21 +181,21 @@ namespace SupportSiteETL.Migration.Load
                         {
                             string id = entry.userId.ToString(); //appended to each parameter (id is unique for every entry)
                             //about
-                            cmd.Parameters.AddWithValue($"@useridA{id}",    entry.userId);
-                            cmd.Parameters.AddWithValue($"@titleA{id}",     "about");
-                            cmd.Parameters.AddWithValue($"@contentA{id}",   entry.about);
+                            cmd.Parameters.AddWithValue($"@useridA{id}", entry.userId);
+                            cmd.Parameters.AddWithValue($"@titleA{id}", "about");
+                            cmd.Parameters.AddWithValue($"@contentA{id}", entry.about);
                             //location
-                            cmd.Parameters.AddWithValue($"@useridB{id}",    entry.userId);
-                            cmd.Parameters.AddWithValue($"@titleB{id}",     "loation");
-                            cmd.Parameters.AddWithValue($"@contentB{id}",   entry.location);
+                            cmd.Parameters.AddWithValue($"@useridB{id}", entry.userId);
+                            cmd.Parameters.AddWithValue($"@titleB{id}", "loation");
+                            cmd.Parameters.AddWithValue($"@contentB{id}", entry.location);
                             //name
-                            cmd.Parameters.AddWithValue($"@useridC{id}",    entry.userId);
-                            cmd.Parameters.AddWithValue($"@titleC{id}",     "name");
-                            cmd.Parameters.AddWithValue($"@contentC{id}",   entry.name);
+                            cmd.Parameters.AddWithValue($"@useridC{id}", entry.userId);
+                            cmd.Parameters.AddWithValue($"@titleC{id}", "name");
+                            cmd.Parameters.AddWithValue($"@contentC{id}", entry.name);
                             //website
-                            cmd.Parameters.AddWithValue($"@useridD{id}",    entry.userId);
-                            cmd.Parameters.AddWithValue($"@titleD{id}",     "website");
-                            cmd.Parameters.AddWithValue($"@contentD{id}",   entry.website);
+                            cmd.Parameters.AddWithValue($"@useridD{id}", entry.userId);
+                            cmd.Parameters.AddWithValue($"@titleD{id}", "website");
+                            cmd.Parameters.AddWithValue($"@contentD{id}", entry.website);
                         }
                         cmd.ExecuteNonQuery();
                     }
@@ -211,7 +211,7 @@ namespace SupportSiteETL.Migration.Load
 
         //add user data to all the different tables given user data, Use batch inserting for much faster write speed
         //basically the commands look something like INSERT INTO table (column names) VALUES (row1), (row2) ... (rowBatchSize)
-        public void AddPosts(List<Q2APost> data, int batchSize=500)
+        public void AddPosts(List<Q2APost> data, int batchSize = 500)
         {
             MySqlConnection conn = q2a.retrieveConnection();
 
@@ -243,26 +243,26 @@ namespace SupportSiteETL.Migration.Load
                         foreach (var entry in currentBatch) //fill in the data of each entry
                         {
                             string id = entry.postid.ToString(); //unique id for every entry
-                            cmd.Parameters.AddWithValue($"@postid{id}",     entry.postid);
-                            cmd.Parameters.AddWithValue($"@type{id}",       entry.type);
-                            cmd.Parameters.AddWithValue($"@parentid{id}",   entry.parentid);
+                            cmd.Parameters.AddWithValue($"@postid{id}", entry.postid);
+                            cmd.Parameters.AddWithValue($"@type{id}", entry.type);
+                            cmd.Parameters.AddWithValue($"@parentid{id}", entry.parentid);
                             cmd.Parameters.AddWithValue($"@categoryid{id}", entry.categoryid);
                             cmd.Parameters.AddWithValue($"@catidpath1{id}", entry.catidpath1);
-                            cmd.Parameters.AddWithValue($"@acount{id}",     entry.acount);
-                            cmd.Parameters.AddWithValue($"@amaxvote{id}",   entry.amaxvote);
-                            cmd.Parameters.AddWithValue($"@userid{id}",     entry.userid);
-                            cmd.Parameters.AddWithValue($"@upvotes{id}",    entry.upvotes);
-                            cmd.Parameters.AddWithValue($"@downvotes{id}",  entry.downvotes);
-                            cmd.Parameters.AddWithValue($"@netvotes{id}",   entry.netvotes);
-                            cmd.Parameters.AddWithValue($"@views{id}",      entry.views);
-                            cmd.Parameters.AddWithValue($"@flagcount{id}",  entry.flagcount);
-                            cmd.Parameters.AddWithValue($"@format{id}",     entry.format);
-                            cmd.Parameters.AddWithValue($"@created{id}",    entry.created);
-                            cmd.Parameters.AddWithValue($"@updated{id}",    entry.updated);
+                            cmd.Parameters.AddWithValue($"@acount{id}", entry.acount);
+                            cmd.Parameters.AddWithValue($"@amaxvote{id}", entry.amaxvote);
+                            cmd.Parameters.AddWithValue($"@userid{id}", entry.userid);
+                            cmd.Parameters.AddWithValue($"@upvotes{id}", entry.upvotes);
+                            cmd.Parameters.AddWithValue($"@downvotes{id}", entry.downvotes);
+                            cmd.Parameters.AddWithValue($"@netvotes{id}", entry.netvotes);
+                            cmd.Parameters.AddWithValue($"@views{id}", entry.views);
+                            cmd.Parameters.AddWithValue($"@flagcount{id}", entry.flagcount);
+                            cmd.Parameters.AddWithValue($"@format{id}", entry.format);
+                            cmd.Parameters.AddWithValue($"@created{id}", entry.created);
+                            cmd.Parameters.AddWithValue($"@updated{id}", entry.updated);
                             cmd.Parameters.AddWithValue($"@updatetype{id}", entry.updateType);
-                            cmd.Parameters.AddWithValue($"@title{id}",      entry.title);
-                            cmd.Parameters.AddWithValue($"@content{id}",    entry.content);
-                            cmd.Parameters.AddWithValue($"@notify{id}",     entry.notify);
+                            cmd.Parameters.AddWithValue($"@title{id}", entry.title);
+                            cmd.Parameters.AddWithValue($"@content{id}", entry.content);
+                            cmd.Parameters.AddWithValue($"@notify{id}", entry.notify);
                             cmd.Parameters.AddWithValue($"@selchildid{id}", entry.selchildid);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
@@ -279,7 +279,7 @@ namespace SupportSiteETL.Migration.Load
 
         //add the user votes into qa_uservotes, Use batch inserting for much faster write speed
         //basically the commands look something like INSERT INTO table (column names) VALUES (row1), (row2) ... (rowBatchSize)
-        public void AddUserVotes(List<UserVote> data, int batchSize=500)
+        public void AddUserVotes(List<UserVote> data, int batchSize = 500)
         {
             // Queries to uservotes
             string addVotesCommand = "INSERT INTO qa_uservotes (postid, userid, vote, flag, votecreated, voteupdated) VALUES ";
@@ -294,7 +294,7 @@ namespace SupportSiteETL.Migration.Load
                     StringBuilder finalCommand = new StringBuilder(addVotesCommand);
 
                     var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
-                    for(int i = 0; i < currentBatch.Count(); i++) //not using for each since id has to be unique, we use the indexes as the id
+                    for (int i = 0; i < currentBatch.Count(); i++) //not using for each since id has to be unique, we use the indexes as the id
                     {
                         string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
                         finalCommand.Append($"(@postid{id}, @userid{id}, @vote{id}, @flag{id}, @votecreated{id}, @voteupdated{id}),");
@@ -302,14 +302,14 @@ namespace SupportSiteETL.Migration.Load
                     finalCommand.Length--; //remove the last comma
                     using (MySqlCommand cmd = new MySqlCommand(finalCommand.ToString(), conn))
                     {
-                        for(int i = 0; i < currentBatch.Count(); i++) //fill in the data of each entry
+                        for (int i = 0; i < currentBatch.Count(); i++) //fill in the data of each entry
                         {
                             string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
                             var entry = data[i + dataLoadedCount];
-                            cmd.Parameters.AddWithValue($"@postid{id}",      entry.postid);
-                            cmd.Parameters.AddWithValue($"@userid{id}",      entry.userid);
-                            cmd.Parameters.AddWithValue($"@vote{id}",        entry.vote);
-                            cmd.Parameters.AddWithValue($"@flag{id}",        entry.flag);
+                            cmd.Parameters.AddWithValue($"@postid{id}", entry.postid);
+                            cmd.Parameters.AddWithValue($"@userid{id}", entry.userid);
+                            cmd.Parameters.AddWithValue($"@vote{id}", entry.vote);
+                            cmd.Parameters.AddWithValue($"@flag{id}", entry.flag);
                             cmd.Parameters.AddWithValue($"@votecreated{id}", entry.votecreated);
                             cmd.Parameters.AddWithValue($"@voteupdated{id}", entry.voteupdated);
                         }
@@ -339,14 +339,14 @@ namespace SupportSiteETL.Migration.Load
             {
                 using (MySqlCommand cmd = new MySqlCommand(addCategoryCommand, conn)) //to qa_users
                 {
-                    cmd.Parameters.AddWithValue("@categoryid",  cat.id);
-                    cmd.Parameters.AddWithValue("@parentid",    cat.parentid);
-                    cmd.Parameters.AddWithValue("@title",       cat.title);
-                    cmd.Parameters.AddWithValue("@tags",        cat.tag);
-                    cmd.Parameters.AddWithValue("@content",     cat.content);
-                    cmd.Parameters.AddWithValue("@qcount",      cat.qcount);
-                    cmd.Parameters.AddWithValue("@position",    cat.position);
-                    cmd.Parameters.AddWithValue("@backpath",    cat.backpath);
+                    cmd.Parameters.AddWithValue("@categoryid", cat.id);
+                    cmd.Parameters.AddWithValue("@parentid", cat.parentid);
+                    cmd.Parameters.AddWithValue("@title", cat.title);
+                    cmd.Parameters.AddWithValue("@tags", cat.tag);
+                    cmd.Parameters.AddWithValue("@content", cat.content);
+                    cmd.Parameters.AddWithValue("@qcount", cat.qcount);
+                    cmd.Parameters.AddWithValue("@position", cat.position);
+                    cmd.Parameters.AddWithValue("@backpath", cat.backpath);
                     cmd.ExecuteNonQuery();
                 }
             }
@@ -370,7 +370,7 @@ namespace SupportSiteETL.Migration.Load
         }
         //functions to help AddToWordTables()
         //add many rows for every insert statement, basically by having INSERT INTO qa_words (columns) VALUES (row1), (row2), ...
-        private void AddWordTable(List<WordEntry> data, int batchSize=500)
+        private void AddWordTable(List<WordEntry> data, int batchSize = 500)
         {
             MySqlConnection conn = q2a.retrieveConnection();
             conn.Open();
@@ -396,12 +396,12 @@ namespace SupportSiteETL.Migration.Load
                         {
                             string id = (i + dataLoadedCount).ToString(); //index as a string, unique for every entry
                             var entry = data[i + dataLoadedCount];
-                            cmd.Parameters.AddWithValue($"@wordid{id}",         entry.wordid);
-                            cmd.Parameters.AddWithValue($"@word{id}",           entry.word);
-                            cmd.Parameters.AddWithValue($"@titlecount{id}",     entry.titlecount);
-                            cmd.Parameters.AddWithValue($"@contentcount{id}",   entry.contentcount);
-                            cmd.Parameters.AddWithValue($"@tagwordcount{id}",   entry.tagwordcount);
-                            cmd.Parameters.AddWithValue($"@tagcount{id}",       entry.tagcount);
+                            cmd.Parameters.AddWithValue($"@wordid{id}", entry.wordid);
+                            cmd.Parameters.AddWithValue($"@word{id}", entry.word);
+                            cmd.Parameters.AddWithValue($"@titlecount{id}", entry.titlecount);
+                            cmd.Parameters.AddWithValue($"@contentcount{id}", entry.contentcount);
+                            cmd.Parameters.AddWithValue($"@tagwordcount{id}", entry.tagwordcount);
+                            cmd.Parameters.AddWithValue($"@tagcount{id}", entry.tagcount);
                         }
                         cmd.ExecuteNonQuery(); //finally execute the command
                     }
@@ -606,6 +606,56 @@ namespace SupportSiteETL.Migration.Load
             catch (Exception ex)
             {
                 Console.WriteLine("Error adding new image: " + ex.Message);
+                throw;
+            }
+            conn.Close();
+        }
+
+        public void AddAccountReclaimTable()
+        {
+            //create the qa_account reclaim
+            //fields: userid, email
+            q2a.ExecuteUpdate("CREATE TABLE qa_accountreclaim (userid INT UNSIGNED PRIMARY KEY, email VARCHAR(513))");
+        }
+
+        //add data to the qa_accountreclaim table, q2a userid and discourse email
+        //add many rows for every insert statement, basically by having INSERT INTO qa_words (columns) VALUES (row1), (row2), ...
+        public void AddAccountReclaimData(List<Q2AUser> data, int batchSize=500)
+        {
+            // Queries to uservotes
+            string addVotesCommand = "INSERT INTO qa_accountreclaim (userid, email) VALUES ";
+            MySqlConnection conn = q2a.retrieveConnection();
+            conn.Open();
+            try
+            {
+                //execute the statement in batches, total statements to execute is data.Count / batchSize
+                for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
+                {
+                    //add (@userid, @email) in each row
+                    StringBuilder finalCommand = new StringBuilder(addVotesCommand);
+
+                    var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
+                    foreach(Q2AUser user in currentBatch)
+                    {
+                        string id = user.userId.ToString(); //index as a string, unique for every entry
+                        finalCommand.Append($"(@userid{id}, @email{id}),");
+                    }
+                    finalCommand.Length--; //remove the last comma
+                    using (MySqlCommand cmd = new MySqlCommand(finalCommand.ToString(), conn))
+                    {
+                        foreach(Q2AUser user in currentBatch) //fill in the data of each entry
+                        {
+                            string id = user.userId.ToString(); //index as a string, unique for every entry
+                            cmd.Parameters.AddWithValue($"@userid{id}", user.userId);
+                            cmd.Parameters.AddWithValue($"@email{id}", user.discourseEmail);
+                        }
+                        cmd.ExecuteNonQuery(); //finally execute the command
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error adding to qa_accountreclaim: " + ex.Message);
                 throw;
             }
             conn.Close();

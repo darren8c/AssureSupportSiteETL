@@ -55,6 +55,7 @@ void testQ2ADeleteData() //deletes users, categories, and all posts
     deleter.DeleteCategories();
     Console.WriteLine("Categories deleted!");
     deleter.DeleteUsers();
+    deleter.DeleteAccountReclaim();
     Console.WriteLine("(non super-admin) Users deleted!");
     deleter.DeleteImages();
     Console.WriteLine("Migrated images deleted!");
@@ -187,7 +188,7 @@ void testQ2ADeleteUsers()
     Deleter deleter = new Deleter();
 
     var beforeDelete = extractor.GetQ2AUsers();
-    int result = deleter.DeleteUsers();
+    //int result = deleter.DeleteUsers();
     var afterDelete = extractor.GetQ2AUsers();
 
     Console.WriteLine("\nAll Q2A Users before deleting:");
@@ -196,7 +197,7 @@ void testQ2ADeleteUsers()
         Console.WriteLine("\t" + qUser["userid"] + ": " + qUser["handle"]);
     }
 
-    Console.WriteLine("\nModified {0} rows", result);
+    //Console.WriteLine("\nModified {0} rows", result);
 
     Console.WriteLine("\nAll Q2A Users after deleting:");
     foreach (var qUser in afterDelete)

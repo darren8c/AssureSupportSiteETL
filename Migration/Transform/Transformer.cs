@@ -16,6 +16,8 @@ namespace SupportSiteETL.Migration.Transform
         PostTransformer pt;
         WordsTransformer wt;
         ImageTransformer it;
+        AccountReclaimer ar;
+
         Loader loader;
 
         Anonymizer anon;
@@ -27,6 +29,8 @@ namespace SupportSiteETL.Migration.Transform
             pt = new PostTransformer();
             wt = new WordsTransformer();
             it = new ImageTransformer();
+            ar = new AccountReclaimer();
+
             loader = new Loader();
 
             anon = new Anonymizer();
@@ -35,6 +39,7 @@ namespace SupportSiteETL.Migration.Transform
         public void Extract()
         {
             ut.Extract();
+            ar.users = ut.newUsers; //account reclaim requires the list of new users
 
             //pass some key information to the different transformers
             anon.userIdMap = ut.oldToNewId;
@@ -57,6 +62,8 @@ namespace SupportSiteETL.Migration.Transform
         public void Load()
         {
             ut.Load(); //add the users to q2a
+            ar.Load(); //add and fill the account reclaim table
+            
             ct.Load(); //add categories to q2a
             pt.Load(); //add posts to q2a
             it.Load(); //add images to q2a
