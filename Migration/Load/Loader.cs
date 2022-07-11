@@ -217,7 +217,7 @@ namespace SupportSiteETL.Migration.Load
 
             // Queries to posts
             string addPostCommand = "INSERT INTO qa_posts (postid,  type,  parentid,  categoryid, catidpath1, acount, amaxvote, userid, " +
-                "upvotes, downvotes, netvotes, views, flagcount, format, created, updated, updatetype, title, content, notify, selchildid) VALUES ";
+                "upvotes, downvotes, netvotes, views, flagcount, format, created, updated, updatetype, title, content, tags, notify, selchildid) VALUES ";
             conn.Open();
             try
             {
@@ -225,7 +225,8 @@ namespace SupportSiteETL.Migration.Load
                 for (int dataLoadedCount = 0; dataLoadedCount < data.Count; dataLoadedCount += batchSize)
                 {
                     //add (@postid#,  @type#,  @parentid#, @categoryid#, @catidpath1#, @acount#, @amaxvote#, @userid#, @upvotes#, @downvotes#,
-                    //@netvotes#, @views#, @flagcount#, @format#, @created#, @updated#, @updatetype#, @title#, @content#, @notify#, @selchildid)" per row
+                    //@netvotes#, @views#, @flagcount#, @format#, @created#, @updated#, @updatetype#, @title#, @content# @tags#, @notify#,
+                    //@selchildid)" per row
                     StringBuilder finalCommand = new StringBuilder(addPostCommand);
 
                     var currentBatch = data.Skip(dataLoadedCount).Take(batchSize);
@@ -234,7 +235,8 @@ namespace SupportSiteETL.Migration.Load
                         string id = entry.postid.ToString(); //unique id for every entry
                         finalCommand.Append($"(@postid{id}, @type{id}, @parentid{id}, @categoryid{id}, @catidpath1{id}, @acount{id}, @amaxvote{id}, " +
                                             $"@userid{id}, @upvotes{id}, @downvotes{id}, @netvotes{id}, @views{id}, @flagcount{id}, @format{id}, " +
-                                            $"@created{id}, @updated{id}, @updatetype{id}, @title{id}, @content{id}, @notify{id}, @selchildid{id}),");
+                                            $"@created{id}, @updated{id}, @updatetype{id}, @title{id}, @content{id}, @tags{id}, @notify{id}, " +
+                                            $"@selchildid{id}),");
                     }
                     finalCommand.Length--; //remove the last comma
                     //add entry data and execute command
@@ -262,6 +264,7 @@ namespace SupportSiteETL.Migration.Load
                             cmd.Parameters.AddWithValue($"@updatetype{id}", entry.updateType);
                             cmd.Parameters.AddWithValue($"@title{id}", entry.title);
                             cmd.Parameters.AddWithValue($"@content{id}", entry.content);
+                            cmd.Parameters.AddWithValue($"@tags{id}", entry.tags);
                             cmd.Parameters.AddWithValue($"@notify{id}", entry.notify);
                             cmd.Parameters.AddWithValue($"@selchildid{id}", entry.selchildid);
                         }

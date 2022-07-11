@@ -17,6 +17,7 @@ namespace SupportSiteETL.Migration.Transform
         WordsTransformer wt;
         ImageTransformer it;
         AccountReclaimer ar;
+        AutoTagger at;
 
         Loader loader;
 
@@ -30,6 +31,7 @@ namespace SupportSiteETL.Migration.Transform
             wt = new WordsTransformer();
             it = new ImageTransformer();
             ar = new AccountReclaimer();
+            at = new AutoTagger();
 
             loader = new Loader();
 
@@ -55,7 +57,7 @@ namespace SupportSiteETL.Migration.Transform
             pt.devUserIds = ut.devUsers;
 
             pt.Extract(); //the post extraction information from the other classes
-            
+            at.Extract(ref pt.allPosts); //assign the posts tags
             it.Extract(ref pt.allPosts); //change all the images in the posts, changes will be reflected in the post transferer
         }
 

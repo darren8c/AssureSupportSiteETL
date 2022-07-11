@@ -33,6 +33,8 @@ namespace SupportSiteETL.Migration.Transform.Models
 
         public string content; //the post content (use tags if format is html)
 
+        public string? tags; //the tags of the post i.e. tag1,tag2,tag3 (if no tags, then null)
+
         public string notify; //@ to notify via email, should be blank normally
 
         public DateTime created; //date of creation yyyy-mm-dd hh:mm:ss
@@ -69,6 +71,7 @@ namespace SupportSiteETL.Migration.Transform.Models
             content = "";
 
             notify = "";
+            tags = null;
 
             created = DateTime.Now;
             updated = null;

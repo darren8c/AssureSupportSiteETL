@@ -318,6 +318,7 @@ namespace SupportSiteETL.Migration.Transform
         //from: https://www.puresourcecode.com/dotnet/csharp/how-to-strip-all-html-tags-and-entities-and-get-clear-text/
         private string StripHTML(string html)
         {
+            html = Regex.Replace(html, @"&[^\s]+;", ""); //replace html entities
             return Regex.Replace(html, "<.*?>", ""); //replace any tags with empty string
         }
 
