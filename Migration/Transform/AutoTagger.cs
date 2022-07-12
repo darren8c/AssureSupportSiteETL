@@ -22,15 +22,17 @@ namespace SupportSiteETL.Migration.Transform
         Dictionary<int, int> totalWordsLocal; //key: postid, value: total words in post (only in content)
         int totalWordsGlobal; //total words in all posts (only content)
 
+        List<string> badTags; //tags they aren't useful
+
         Dictionary<int, Tags> localTags;
 
         //global vars for tweaking tag assignment settings
-        int MIN_LOCAL_COUNT = 2; //how many times a word must be in a post to be considered as a tag
-        int TITLE_BOOST = 2; //how much of boost the word appearing in the title is, (adds to word count during % calculation)
-        int MIN_TAG_POSTS = 3; //tags won't be used unless this many posts have this tag as a possiblity
-        double MAX_APPEAR_CHANCE = .03; //if a word appears more than this % of the time, we don't consider it a possiblity
+        int MIN_LOCAL_COUNT = 3; //how many times a word must be in a post's content to be considered as a tag
+        int TITLE_BOOST = 5; //how much of boost the word appearing in the title is, (adds to word count during % calculation)
+        int MIN_TAG_POSTS = 2; //tags won't be used unless this many posts have this tag as a possiblity
+        double MAX_APPEAR_CHANCE = .9; //if a word appears more than this % of the time, we don't consider it a possiblity
         int MAX_TAG_COUNT = 5; //max tags per post
-        double MIN_SCORE = 2; //minimum abnormal score, i.e. 2 means word appears twice as much as normal
+        double MIN_SCORE = 60; //minimum abnormal score, i.e. 10 means word appears twice as much as normal
 
         public AutoTagger()
         {
@@ -42,6 +44,7 @@ namespace SupportSiteETL.Migration.Transform
             int totalWordsGlobal = 0;
 
             localTags = new Dictionary<int, Tags>();
+            PopulateBadTagList();
         }
 
         //go through the posts and assign tags automatically
@@ -55,12 +58,7 @@ namespace SupportSiteETL.Migration.Transform
             //get canidate tags for each post
             foreach (Q2APost p in allPosts)
                 if (p.type == "Q") //only index if it is a question
-                {
-                    //Console.WriteLine(p.postid);
-                    //Console.WriteLine(StripHTML(p.content));
-                    //Console.WriteLine();
                     SetPossibleTags((int)p.postid);
-                }
 
             //finalize the list of tags after the initial pass
             RefineTags();
@@ -69,6 +67,7 @@ namespace SupportSiteETL.Migration.Transform
             foreach (Q2APost p in allPosts)
                 if(p.type == "Q") //only questions have tags
                     p.tags = GetTagString((int)p.postid);
+
         }
         //auto tagger has no extract as it only modifies the post list and doesn't write to the database
 
@@ -99,18 +98,6 @@ namespace SupportSiteETL.Migration.Transform
             }
             totalWordsLocal[id] = contentWords.Count; //update word counts
             totalWordsGlobal += contentWords.Count;
-
-            /* debugging
-            Console.WriteLine(StripHTML(p.content) + "\n");
-            Console.WriteLine($"Local: {totalWordsLocal[id]}, Total: {totalWordsGlobal}");
-            foreach (string word in titleLocal[id])
-                Console.Write(word + " ");
-            Console.WriteLine(); //spacer
-            foreach (KeyValuePair<string, int> pair in contentCountLocal[id])
-                Console.WriteLine($"{pair.Key}: {pair.Value}");
-            Console.WriteLine("\n");
-            Console.ReadLine();
-            //*/
         }
 
         //set a list of possible tags based on popularity for a post id
@@ -138,25 +125,23 @@ namespace SupportSiteETL.Migration.Transform
 
             foreach(string word in abnormalScore.Keys)
             {
-                //appears the minimum time in the post, high enough score, and not too common of a word
-                bool validWord = contentCountLocal[id][word] > MIN_LOCAL_COUNT &&
+                //appears the minimum time in the post (or is in title), high enough score, and not too common of a word
+                bool validWord = (contentCountLocal[id][word] >= MIN_LOCAL_COUNT || titleLocal[id].Contains(word)) &&
                     abnormalScore[word] > MIN_SCORE && CalculateWordAppearance(word) < MAX_APPEAR_CHANCE;
 
                 if (validWord) //all the check are passed add this to the list of possible tags
                     localTags[id].Add(word);
 
-                //Console.WriteLine($"{word}, {localScore[word]}, {abnormalScore[word]}, {CalculateWordAppearance(word)}");
+                if (localTags[id].Count >= MAX_TAG_COUNT) //enough tags, cutoff here
+                    break;
             }
-
-            //Console.WriteLine();
-            //Console.ReadLine();
         }
 
-        //from wordsTransformer, parse text into words (all lowercase), minor modification to alt chars (- and \)
+        //from wordsTransformer, parse text into words (all lowercase), minor modification to alt chars (- \ .)
         private List<string> ParseText(string title)
         {
             List<string> words = new List<string>();
-            string altChars = @"@#$_\-"; //alternative chars (besides letteers and nums) that can be a part of a word
+            string altChars = @"#$_\-+&@%*.:'/"""; //alternative chars (besides letteers and nums) that can be a part of a word
             string currWord = "";
             foreach (char c in title)
             {
@@ -166,7 +151,13 @@ namespace SupportSiteETL.Migration.Transform
                     currWord = currWord + c;
                 else //on split letter e.g. space ! . ,
                 {
-                    if (currWord.Length > 0) //only add if non empty
+                    if (currWord.Length > 0 && altChars.Contains(currWord.Last())) //remove the last char if it is like . \ -
+                        currWord = currWord.Substring(0, currWord.Length - 1); //this will allow words like 1.17.6 but trims ending symbols
+                    if (currWord.Length > 0 && altChars.Contains(currWord.First())) //remove the first char if it is like . \ -
+                        currWord = currWord.Substring(1); //this will allow words like 1.17.6 but trims starting symbols
+
+                    //a tag should be more than 1 letter (i.e. 7 or w can't be a tag), and can't be name or "bad tag"
+                    if (currWord.Length > 1 && !IsName(currWord) && !badTags.Contains(currWord))
                         words.Add(currWord);
                     currWord = ""; //reset
                 }
@@ -195,6 +186,7 @@ namespace SupportSiteETL.Migration.Transform
                         tagCounts[tag]++;
                 }
             }
+
             //talley of tag canidates is complete now remove if threshold is not met
             foreach (KeyValuePair<int,Tags> tagsPair in localTags) //go through every post
             {
@@ -247,6 +239,21 @@ namespace SupportSiteETL.Migration.Transform
                 if(post.ContainsKey(word))
                     count++;
             return ((double)count) / contentCountLocal.Count(); // appearances / # of posts
+        }
+
+        //populate the list from the BadTags.txt file, list of not allowed tag words
+        private void PopulateBadTagList()
+        {
+            badTags = new List<string>();
+            var lines = File.ReadLines("Resources/BadTags.txt");
+            foreach (string line in lines)
+                badTags.Add(line); //each word is on its own seperate line
+        }
+
+        //string is in format of anon234567
+        private bool IsName(string text)
+        {
+            return Regex.IsMatch(text, "anon[0-9]{6}"); //anon followed by 6 digits.
         }
     }
 }

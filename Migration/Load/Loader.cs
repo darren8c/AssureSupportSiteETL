@@ -35,7 +35,7 @@ namespace SupportSiteETL.Migration.Load
             UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='Q'", "cache_qcount"); //question count
             UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='A'", "cache_acount"); //answer count
             UpdateStatHelper("SELECT COUNT(*) FROM qa_posts WHERE type='C'", "cache_ccount"); //comment count
-            UpdateStatHelper("SELECT COUNT(*) FROM qa_tagwords", "cache_tagcount"); //the amount of tags on the site
+            UpdateStatHelper("SELECT COUNT(DISTINCT wordid) FROM qa_tagwords", "cache_tagcount"); //the amount of tags on the site
             UpdateStatHelper("SELECT COUNT(*) FROM qa_posts where type='Q' and acount=0", "cache_unaqcount"); //unanswered question count
             UpdateStatHelper("SELECT COUNT(*) FROM qa_posts where type='Q' and selchildid is null", "cache_unselqcount"); //no selected answer count
             UpdateStatHelper("SELECT COUNT(*) FROM qa_posts where type='Q' and amaxvote=0", "cache_unupaqcount"); //unvoted answer count
@@ -618,7 +618,7 @@ namespace SupportSiteETL.Migration.Load
         {
             //create the qa_account reclaim
             //fields: userid, email
-            q2a.ExecuteUpdate("CREATE TABLE qa_accountreclaim (userid INT UNSIGNED PRIMARY KEY, email VARCHAR(513))");
+            q2a.ExecuteUpdate("CREATE TABLE qa_accountreclaim (userid INT UNSIGNED PRIMARY KEY, email VARCHAR(513), reclaimcode CHAR(8) DEFAULT '')");
         }
 
         //add data to the qa_accountreclaim table, q2a userid and discourse email

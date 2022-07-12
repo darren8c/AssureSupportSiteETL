@@ -13,7 +13,7 @@ roleMapping.txt:
 		discourse_id, new_role_name
 
 specialUserPosts.txt:
-	This is a file which is an override to certain users so specific users posts will be either modified, hidden or otherwise be treated differently,
+	This file is an override to certain users so specific users posts will be either modified, hidden or otherwise be treated differently,
 	i.e. there are many guides on discourse which are outdated and don't need to be transferred over these posts are all made by the same user so they are 
 	given the flag "Nathan".
 	Flag types:
@@ -24,3 +24,9 @@ specialUserPosts.txt:
 
 	Format:
 		discourse_id, flag_type
+
+BadTags.txt:
+	This file is list of tags that can't be allowed, tags are automatically created but a couple tags (i.e. him) don't make sense.
+
+	Format:
+		tagword
