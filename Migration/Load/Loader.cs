@@ -618,7 +618,8 @@ namespace SupportSiteETL.Migration.Load
         {
             //create the qa_account reclaim
             //fields: userid, email
-            q2a.ExecuteUpdate("CREATE TABLE qa_accountreclaim (userid INT UNSIGNED PRIMARY KEY, email VARCHAR(513), reclaimcode CHAR(8) DEFAULT '')");
+            q2a.ExecuteUpdate("CREATE TABLE qa_accountreclaim (userid INT UNSIGNED PRIMARY KEY, email VARCHAR(513), " +
+                              "reclaimcode CHAR(8) DEFAULT '', lastreclaim DATETIME)");
         }
 
         //add data to the qa_accountreclaim table, q2a userid and discourse email
