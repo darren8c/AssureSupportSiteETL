@@ -47,6 +47,7 @@ namespace SupportSiteETL.Migration.Transform
             anon.userIdMap = ut.oldToNewId;
             anon.q2aUsers = ut.newUsers;
             pt.anonymizer = anon;
+            anon.SetMentionList();
 
             ct.Extract();
 

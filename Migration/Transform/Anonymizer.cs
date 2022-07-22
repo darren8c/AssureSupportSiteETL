@@ -21,6 +21,7 @@ namespace SupportSiteETL.Migration.Transform
         private List<User> discourseUsers; //data for the discourse users, used for generating list of words to remove
         public List<Q2AUser> q2aUsers; //q2a users, this is set by Transferer sometime after the constructor
         public Dictionary<int, int> userIdMap; //go from discourse to q2a user id, WARNING this is set by Transferer sometime after the constructor
+        public Dictionary<string, string> mentionList; //old username to new handle, is set externally by Transferer after constructor
 
         private Dictionary<int, bool> sensitiveUser; //go from discourse id to sensitive region or not
         List<KeyValuePair<BlockIP, bool>> blockSensitivities; //stores ip ranges and whether they are a sensitive region or not
@@ -45,6 +46,7 @@ namespace SupportSiteETL.Migration.Transform
             {
                 posts[i] = RemoveAvatars(posts[i]); //remove any avatar images in the post
                 posts[i] = RemoveLinks(posts[i]); //remove any links to the paratext website
+                posts[i] = RemoveEmails(posts[i]);
             }
 
             //remove user names mentioned in posts
@@ -54,7 +56,7 @@ namespace SupportSiteETL.Migration.Transform
                 posts[i].content = CensorContent(posts[i].content, cw); //censor the main text
                 posts[i].title = CensorContent(posts[i].title, cw); //censor the title just in case
             }
-        }            
+        }
 
 
         //censor the words in the content
@@ -140,9 +142,11 @@ namespace SupportSiteETL.Migration.Transform
                 Q2AUser q2aUser = q2aUsers.First(u => u.userId == userIdMap[discId]);
 
                 //mapping from a censored word to the replacement (censored_word) -> replace_with
-                cw[dUser["email"]] = "[EMAIL REMOVED]";
                 cw[dUser["username"]] = q2aUser.handle;
-                cw[$"@{dUser["username"]}"] = $"@{q2aUser.handle}"; //add @ versions as it is common to @ users, i.e. @john_doe
+                
+                //removing mentiosn and emails are handled seperately and will globally remove all mentions and emails
+                //cw[dUser["email"]] = "[EMAIL REMOVED]";
+                //cw[$"@{dUser["username"]}"] = $"@{q2aUser.handle}"; //add @ versions as it is common to @ users, i.e. @john_doe
 
 
                 //for both the username and name, each piece is a censored word, i.e. for "John Doe" both "John" and "Doe" should be removed
@@ -203,7 +207,7 @@ namespace SupportSiteETL.Migration.Transform
                 parts.Add(part);
 
             if (id == 116) //special case 4 user, only first 2 parts relate to anonymity
-                return parts.GetRange(0, 2);
+                return parts.GetRange(0, 2); //cuts off: SIL International, Language Technology Consultant
 
             return parts;
         }
@@ -246,6 +250,38 @@ namespace SupportSiteETL.Migration.Transform
             p.content = String.Join("", parts);
 
             return p;
+        }
+
+        //remove ANY email mentioned in a post
+        private Q2APost RemoveEmails(Q2APost p)
+        {
+            //email is like [space] name (chars symbols numbers) @ (chars numbers -) . (chars numbers -) (chars case insensitive with (?i))
+            p.content = Regex.Replace(p.content, @"(?i)\b[a-z.1-9!#$%&'*+\-/=?^_`{|}~]+@[a-z1-9-]+\.[a-z1-9-]+\b", "[Email Removed]");
+            return p;
+        }
+
+
+        //old username to new username i.e. danielMarch -> anon123456, requires userIdMap to be set
+        public Dictionary<string, string> SetMentionList()
+        {
+            mentionList = new Dictionary<string, string>();
+            foreach(User dUser in discourseUsers)
+            {
+                Q2AUser qUser = q2aUsers.First(u => u.userId == userIdMap[int.Parse(dUser["id"])]); //matching q2a user
+                mentionList[dUser["username"]] = qUser.handle;
+            }
+            return mentionList;
+        }
+
+        //remove any @username mentions and replace them, requires mentionList to be set
+        public void RemoveMentions(ref List<Q2APost> posts)
+        {
+            foreach(KeyValuePair<string,string> entry in mentionList)
+            {
+                Regex searchKey = new Regex(@"(?i)\s@" + entry.Key + @"\b", RegexOptions.Compiled);
+                foreach(Q2APost post in posts)
+                    post.content = searchKey.Replace(post.content, $" @{entry.Value}"); //swap old username for 
+            }
         }
 
 

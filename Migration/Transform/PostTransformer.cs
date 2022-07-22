@@ -80,6 +80,8 @@ namespace SupportSiteETL.Migration.Transform
                 allPosts.AddRange( createPostsFromTopic(topic) );
                 //Console.WriteLine("Topic " + topic["id"] + " extracted");
             }
+            anonymizer.RemoveMentions(ref allPosts); //remove any @username instances
+
 
             Console.WriteLine("Posts Transformed!");
         }
