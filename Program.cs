@@ -15,9 +15,9 @@ using SupportSiteETL.Migration.Load;
 //testTransferCategories();
 //testWordTables();
 //testImageTransferer();
+//testRegistry();
 testQ2ADeleteData(); //delete all the entered site data
-testTransferAll();
-
+testTransferAll(); //Full ETL Process
 
 void testTransferAll() //transfer both users and posts
 {
@@ -33,6 +33,11 @@ void testWordTables()
 {
     WordsTransformer wt = new WordsTransformer();
     wt.Load();
+}
+
+void testRegistry()
+{
+    Registry reg = new Registry();
 }
 
 void testImageTransferer()

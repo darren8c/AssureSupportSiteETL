@@ -26,6 +26,8 @@ namespace SupportSiteETL.Migration.Transform
         private Dictionary<int, bool> sensitiveUser; //go from discourse id to sensitive region or not
         List<KeyValuePair<BlockIP, bool>> blockSensitivities; //stores ip ranges and whether they are a sensitive region or not
 
+        private Registry registry; //has the list of registry users
+
 
         private Extractor extractor;
 
@@ -37,6 +39,8 @@ namespace SupportSiteETL.Migration.Transform
             Console.WriteLine("Determining sensitive users...");
             PopulateSensitiveList(); //sets sensitiveUser and blockSensitivities from the files
             Console.WriteLine("Sensitive users identified!");
+
+            registry = new Registry();
         }
 
         //from a given topic/thread remove all data that relates to anonymity, note at this time userIdMap should be set already
@@ -73,7 +77,7 @@ namespace SupportSiteETL.Migration.Transform
             return content;
         }
         
-        //go from a search word i.e. "John" -> the regex expression search term
+        //go from a search word i.e. "John" -> the regex expression search term (any case)
         private string GetExpressionFromWord(string word)
         {
             //special characters in regular expression need to be replaced with \\, i.e. ? -> \?
@@ -154,7 +158,7 @@ namespace SupportSiteETL.Migration.Transform
                 List<string> names = SplitName(dUser["username"], discId); //split the usernames in parts and add the parts
                 if (names.Count > 0)
                     cw[names[0]] = q2aUser.handle; //first name maps to handle
-                for (int i = 1; i < names.Count; i++)
+                for (int i = 1; i < names.Count; i++) //following names map to nothing
                     cw[names[i]] = "";
 
                 if (dUser["name"] == "") //skip censored words related to names if name is blank
@@ -212,7 +216,6 @@ namespace SupportSiteETL.Migration.Transform
             return parts;
         }
 
-
         //if the post has anyone's user avatar, remove it
         private Q2APost RemoveAvatars(Q2APost p)
         {
@@ -256,7 +259,7 @@ namespace SupportSiteETL.Migration.Transform
         private Q2APost RemoveEmails(Q2APost p)
         {
             //email is like [space] name (chars symbols numbers) @ (chars numbers -) . (chars numbers -) (chars case insensitive with (?i))
-            p.content = Regex.Replace(p.content, @"(?i)\b[a-z.1-9!#$%&'*+\-/=?^_`{|}~]+@[a-z1-9-]+\.[a-z1-9-]+\b", "[Email Removed]");
+            p.content = Regex.Replace(p.content, @"(?i)\b[a-z.0-9!#$%&'*+\-/=?^_`{|}~]+@[a-z0-9-]+\.[a-z0-9-]+\b", "[Email Removed]");
             return p;
         }
 
@@ -276,6 +279,7 @@ namespace SupportSiteETL.Migration.Transform
         //remove any @username mentions and replace them, requires mentionList to be set
         public void RemoveMentions(ref List<Q2APost> posts)
         {
+            Console.WriteLine("Removing mentions globally...");
             foreach(KeyValuePair<string,string> entry in mentionList)
             {
                 Regex searchKey = new Regex(@"(?i)\s@" + entry.Key + @"\b", RegexOptions.Compiled);
@@ -284,6 +288,33 @@ namespace SupportSiteETL.Migration.Transform
             }
         }
 
+        //remove registry names
+        public void FilterByRegistry(ref List<Q2APost> posts)
+        {
+            if (!registry.found) //registry file wasn't found, skip
+                return;
+
+            Console.WriteLine("Removing unneeded registry searches...");
+            registry.ModifyListByPosts(posts); //remove certain words in the censoredWords list
+            
+            Console.Write("Filtering by registry... ");
+
+            int totalRemoved = 0;
+            foreach (KeyValuePair<string, string> entry in registry.censoredWords)
+            {
+                Regex searchKey = new Regex(@"(?i)\b" + entry.Key + @"\b", RegexOptions.Compiled);
+                foreach (Q2APost post in posts)
+                {
+                    Match match = searchKey.Match(post.content);
+                    if(match.Success)
+                    {
+                        totalRemoved++;
+                        post.content = searchKey.Replace(post.content, $"{entry.Value}"); //swap old username for [Censored Name]
+                    }
+                }
+            }
+            Console.WriteLine($"{totalRemoved} names removed!");
+        }
 
         private void PopulateSensitiveList()
         {

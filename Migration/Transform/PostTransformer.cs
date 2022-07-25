@@ -81,6 +81,7 @@ namespace SupportSiteETL.Migration.Transform
                 //Console.WriteLine("Topic " + topic["id"] + " extracted");
             }
             anonymizer.RemoveMentions(ref allPosts); //remove any @username instances
+            anonymizer.FilterByRegistry(ref allPosts); //remove registry names
 
 
             Console.WriteLine("Posts Transformed!");
