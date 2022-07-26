@@ -30,3 +30,7 @@ BadTags.txt:
 
 	Format:
 		tagword
+
+CommonWords.txt
+	This file is a list of 500 of the most common words. It is used by the anonymizer to filter out words that shouldn't be censored (i.e. don't remove will or so).
+	The file is edited from https://gist.github.com/deekayen/4148741#file-1-1000-txt

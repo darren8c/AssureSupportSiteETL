@@ -26,6 +26,8 @@ namespace SupportSiteETL.Migration.Transform
         private Dictionary<int, bool> sensitiveUser; //go from discourse id to sensitive region or not
         List<KeyValuePair<BlockIP, bool>> blockSensitivities; //stores ip ranges and whether they are a sensitive region or not
 
+        private SortedList<string,string> commonWords; //common english words we shouldn't filter out
+
         private Registry registry; //has the list of registry users
 
 
@@ -40,6 +42,7 @@ namespace SupportSiteETL.Migration.Transform
             PopulateSensitiveList(); //sets sensitiveUser and blockSensitivities from the files
             Console.WriteLine("Sensitive users identified!");
 
+            PopulateCommonWords(); //set commonWords
             registry = new Registry();
         }
 
@@ -210,6 +213,9 @@ namespace SupportSiteETL.Migration.Transform
             if (part != "") //add the final part
                 parts.Add(part);
 
+            parts = parts.Where(p => p.Length > 1).ToList(); //remove any 1 letter parts (i.e. 'a' shouldn't be valid)
+            parts = parts.Where(p => !commonWords.ContainsKey(p.ToLower())).ToList(); //filter out common words
+
             if (id == 116) //special case 4 user, only first 2 parts relate to anonymity
                 return parts.GetRange(0, 2); //cuts off: SIL International, Language Technology Consultant
 
@@ -314,6 +320,16 @@ namespace SupportSiteETL.Migration.Transform
                 }
             }
             Console.WriteLine($"{totalRemoved} names removed!");
+        }
+
+        //set the common word list from the file
+        private void PopulateCommonWords()
+        {
+            commonWords = new SortedList<string, string>();
+            var lines = File.ReadLines("Resources/CommonWords.txt"); //one word per line
+            foreach (string line in lines)
+                commonWords.Add(line, line); //one is the searchKey, one is the value
+            //list is automatically sorted
         }
 
         private void PopulateSensitiveList()
