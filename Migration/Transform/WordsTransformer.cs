@@ -93,7 +93,7 @@ namespace SupportSiteETL.Migration.Transform
         //load/update the tables on q2a so searching works, this should be done last essentially in the ETL
         public void Load()
         {
-            deleter.DeleteWordTables(); //clear the tables since we will be writing over them
+            //deleter.DeleteWordTables(); //clear the tables since we will be writing over them
 
             posts = extractor.GetQ2APosts(); //get all the posts from q2a
 

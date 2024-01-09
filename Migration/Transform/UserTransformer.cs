@@ -85,11 +85,23 @@ namespace SupportSiteETL.Migration.Transform
         public void Extract() //fill in the list of new users, does not actually write any data
         {
             //find the last userid of the Q2A users
-            int lastId = -1000; //arbitrary minimum
+            int lastId = 0; //arbitrary minimum
             List<User> q2aCurrUsers = extractor.GetQ2AUsers();
+            List<User> q2aCurrAchievedUsers = extractor.GetAchievedUsers();
+            User usersIDEmail = new();
+            
+            foreach (User user in q2aCurrAchievedUsers)
+            {
+                usersIDEmail.Add(user["email"], user["userid"]);
+            }
+
             foreach (User user in q2aCurrUsers)
+            {
+                if (!user["email"].StartsWith("anon") && !usersIDEmail.ContainsKey(user["email"])) usersIDEmail.Add(user["email"], user["userid"]);
                 if (int.Parse(user["userid"]) > lastId)
                     lastId = int.Parse(user["userid"]);
+            }
+         
             //this will be the first id the new user receives (i.e. if the q2a site had 3 users, the first discourse user is not id 4)
             int currId = lastId + 1;
 
@@ -100,7 +112,16 @@ namespace SupportSiteETL.Migration.Transform
             List<User> discourseUsers = extractor.GetDiscourseUsers();
             foreach (User dUser in discourseUsers)
             {
-                newUsers.Add(gatherData(currId, dUser));
+                //if (int.Parse(dUser["id"]) < 1) continue;
+                if (usersIDEmail.ContainsKey(dUser["email"]))
+                {
+                    if (usersIDEmail.TryGetValue(dUser["email"], out string userid)) 
+                        oldToNewId.Add(int.Parse(dUser["id"]), int.Parse(userid));
+                    continue; // won't add users that has been registered
+                }
+                Q2AUser newUser = gatherData(currId, dUser);
+                if (newUser == null) continue;
+                newUsers.Add(newUser);
                 oldToNewId.Add(int.Parse(dUser["id"]), currId);
                 currId++;
             }
@@ -120,15 +141,18 @@ namespace SupportSiteETL.Migration.Transform
         //fill in the needed data from the databases for this user
         private Q2AUser gatherData(int userId, User dUser)
         {
+            // If user does not post anything, we will not add s/he
+            if (dUser["last_posted_at"] == null) return null;
+            
             Q2AUser newUser = new Q2AUser();
 
             int dUserId = int.Parse(dUser["id"]);
             newUser.userId = userId;
-            newUser.handle = nameGen.getNewUser().name;
+            newUser.handle = dUser["username"]; // do not anomynize user
 
             newUser.created_at = DateTime.Now; //time doesn't matter just use now
             newUser.loggedin = DateTime.Now;
-            newUser.email = newUser.handle + "@example.com"; //just a default email
+            newUser.email = dUser["email"]; //give real eamil
 
             newUser.discourseEmail = dUser["email"]; //email from discourse
 
