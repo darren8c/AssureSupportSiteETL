@@ -16,7 +16,8 @@ using SupportSiteETL.Migration.Load;
 //testWordTables();
 //testImageTransferer();
 //testRegistry();
-testQ2ADeleteData(); //delete all the entered site data
+
+//testQ2ADeleteData(); // we don't want to delete all the entered site data
 testTransferAll(); //Full ETL Process
 
 void testTransferAll() //transfer both users and posts

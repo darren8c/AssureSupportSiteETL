@@ -28,7 +28,7 @@ namespace SupportSiteETL.Migration.Transform
         public void Load()
         {
             //create the and write the rows
-            loader.AddAccountReclaimTable();
+            //loader.AddAccountReclaimTable();
             loader.AddAccountReclaimData(users);
         }
     }

@@ -47,14 +47,14 @@ namespace SupportSiteETL.Migration.Transform
             anon.userIdMap = ut.oldToNewId;
             anon.q2aUsers = ut.newUsers;
             pt.anonymizer = anon;
-            anon.SetMentionList();
+            //anon.SetMentionList(); not able to do so, as we have lost previous discourse username
 
-            ct.Extract();
+            //ct.Extract();
 
 
             //pass some key information to the different transformers
             pt.oldToNewId = ut.oldToNewId;
-            pt.oldToNewCatId = ct.catIdMap;
+            //pt.oldToNewCatId = ct.catIdMap;
             pt.devUserIds = ut.devUsers;
 
             pt.Extract(); //the post extraction information from the other classes
@@ -67,11 +67,11 @@ namespace SupportSiteETL.Migration.Transform
             ut.Load(); //add the users to q2a
             ar.Load(); //add and fill the account reclaim table
             
-            ct.Load(); //add categories to q2a
+            //ct.Load(); //add categories to q2a
             pt.Load(); //add posts to q2a
             it.Load(); //add images to q2a
 
-            ct.updateCategoryCounts(); //update the category count now that post data is loaded
+            //ct.updateCategoryCounts(); //update the category count now that post data is loaded
             wt.Load(); //update all the word tables
             
             loader.UpdateSiteStats(); //update some key values in qa_stats

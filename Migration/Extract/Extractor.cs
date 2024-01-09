@@ -123,6 +123,11 @@ namespace SupportSiteETL.Migration.Extract
             return q2a.ExecuteQuery("SELECT * FROM qa_users ORDER BY userid;");
         }
 
+        public List<Dictionary<string, string>> GetAchievedUsers()
+        {
+            return q2a.ExecuteQuery("SELECT * FROM qa_accountreclaim ORDER BY userid;");
+        }
+
         //get all the categories currently on q2a
         public List<Dictionary<string, string>> GetQ2ACategories()
         {

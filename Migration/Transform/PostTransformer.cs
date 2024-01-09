@@ -69,18 +69,18 @@ namespace SupportSiteETL.Migration.Transform
                     }
                 }
 
-                bool deleteCategory = oldToNewCatId[int.Parse(topic["category_id"])] == -1;
+                bool deleteCategory = topic["category_id"] == null;
                 if (deleteCategory) //if something belongs to "Delete" don't add to q2a
                     continue;
 
-                if (anonymizer.IsSensitiveUser(int.Parse(topic["user_id"]))) //don't migrate any post made by a sensitive user.
-                    continue;
+                //if (anonymizer.IsSensitiveUser(int.Parse(topic["user_id"]))) //don't migrate any post made by a sensitive user.
+                //    continue;
 
 
                 allPosts.AddRange( createPostsFromTopic(topic) );
                 //Console.WriteLine("Topic " + topic["id"] + " extracted");
             }
-            anonymizer.RemoveMentions(ref allPosts); //remove any @username instances
+            //anonymizer.RemoveMentions(ref allPosts); //remove any @username instances
             anonymizer.FilterByRegistry(ref allPosts); //remove registry names
 
 
@@ -166,7 +166,7 @@ namespace SupportSiteETL.Migration.Transform
                 double score = 0; //score for this post
 
                 score += ordW * postNum; //post order
-                if (devUserIds.Contains((int)posts[i].userid)) //is dev
+                if (posts[i].userid != null && devUserIds.Contains((int)posts[i].userid)) //is dev
                     score += devW * 1;
                 
                 score += votW * posts[i].netvotes; //votes
@@ -227,12 +227,12 @@ namespace SupportSiteETL.Migration.Transform
             currPostId++; //iterate ids
             
             //user_id details
-            if (dcPost["user_id"] != "") //not null user
-                newPost.userid = oldToNewId[int.Parse(dcPost["user_id"])];
+            if (dcPost["user_id"] != "" && oldToNewId.TryGetValue(int.Parse(dcPost["user_id"]), out int userid)) //not null user
+                newPost.userid = userid; // some userid are not in the database
             else //must be null user (deleted/banned), it will now show up as anonymous
                 newPost.userid = null;
             //category details
-            newPost.categoryid = oldToNewCatId[int.Parse(topic["category_id"])];
+            newPost.categoryid = 7; // category id for ptxprint is 7 in Q2A
             newPost.catidpath1 = newPost.categoryid;
             //point details
             newPost.views = int.Parse(dcPost["reads"]);
@@ -295,8 +295,8 @@ namespace SupportSiteETL.Migration.Transform
             int discId = -1; //default system user
             if (dcPost["user_id"] != "") //not null user
                 discId = int.Parse(dcPost["user_id"]);
-            if ( bool.Parse(dcPost["hidden"]) || bool.Parse(dcPost["user_deleted"]) || anonymizer.IsSensitiveUser(discId))
-                newPost.type += "_HIDDEN"; //add hidden to the type, i.e. C_HIDDEN
+            //if ( bool.Parse(dcPost["hidden"]) || bool.Parse(dcPost["user_deleted"]) || anonymizer.IsSensitiveUser(discId))
+            //    newPost.type += "_HIDDEN"; //add hidden to the type, i.e. C_HIDDEN
 
         }
 
@@ -326,7 +326,8 @@ namespace SupportSiteETL.Migration.Transform
             {
                 voteDetails[i] = new UserVote();
                 voteDetails[i].postid = postIdQ2A;
-                voteDetails[i].userid = oldToNewId[int.Parse(dcPostsActions[i]["user_id"])];
+                if (oldToNewId.TryGetValue(int.Parse(dcPostsActions[i]["user_id"]), out int userid)) //not null user
+                    voteDetails[i].userid = userid; // some userid are not in the database
                 voteDetails[i].votecreated = DateTime.Parse(dcPostsActions[i]["created_at"]);
                 voteDetails[i].voteupdated = DateTime.Parse(dcPostsActions[i]["updated_at"]);
             }

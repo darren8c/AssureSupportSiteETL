@@ -39,7 +39,7 @@ namespace SupportSiteETL.Migration.Transform
             discourseUsers = extractor.GetDiscourseUsers();
 
             Console.WriteLine("Determining sensitive users...");
-            PopulateSensitiveList(); //sets sensitiveUser and blockSensitivities from the files
+            //PopulateSensitiveList(); //sets sensitiveUser and blockSensitivities from the files
             Console.WriteLine("Sensitive users identified!");
 
             PopulateCommonWords(); //set commonWords
@@ -57,12 +57,12 @@ namespace SupportSiteETL.Migration.Transform
             }
 
             //remove user names mentioned in posts
-            CensoredWords cw = GetWordList(postsD);
-            for(int i = 0; i < posts.Count; i++) //censor the content of each post
-            {
-                posts[i].content = CensorContent(posts[i].content, cw); //censor the main text
-                posts[i].title = CensorContent(posts[i].title, cw); //censor the title just in case
-            }
+            //CensoredWords cw = GetWordList(postsD);
+            //for(int i = 0; i < posts.Count; i++) //censor the content of each post
+            //{
+            //    posts[i].content = CensorContent(posts[i].content, cw); //censor the main text
+            //    posts[i].title = CensorContent(posts[i].title, cw); //censor the title just in case
+            //}
         }
 
 
@@ -140,9 +140,11 @@ namespace SupportSiteETL.Migration.Transform
 
             List<int> discUsers = new List<int>(); //the discourse user ids of people on this thread.
             foreach(DiscoursePost p in postsD)
-                if (!discUsers.Contains(int.Parse(p["user_id"])))
-                    discUsers.Add(int.Parse(p["user_id"])); //add to list of known users for this thread
-
+            {
+                if (int.TryParse(p["user_id"], out int userid) && !discUsers.Contains(userid))
+                    discUsers.Add(userid); //add to list of known users for this thread
+            }
+                
             foreach (int discId in discUsers) //go through each user id and generate a list of banned words
             {
                 User dUser = discourseUsers.First(u => int.Parse(u["id"]) == discId);
@@ -372,6 +374,7 @@ namespace SupportSiteETL.Migration.Transform
             sensitiveUser = new Dictionary<int, bool>();
             foreach (User u in discourseUsers)
             {
+                //if (int.Parse(u["id"]) < 1) continue;
                 string ip1 = u["ip_address"]; //first ip to check
                 string ip2 = u["registration_ip_address"]; //second ip to check
 
